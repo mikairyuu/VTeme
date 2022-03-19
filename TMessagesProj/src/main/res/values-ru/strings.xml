@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="AppName">ВТеме</string>
+    <string name="AppName">@string/VTeme</string>
+    <string name="VTeme">ВТеме</string>
     <string name="VTemeSettings">ВТеме Настройки</string>
 </resources>

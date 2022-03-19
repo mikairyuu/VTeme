@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="AppName">VTeme</string>
+    <string name="AppName">@string/VTeme</string>
+    <string name="VTeme">VTeme</string>
     <string name="AppNameBeta">Telegram Beta</string>
     <string name="LanguageName">English</string>
     <string name="English">English</string>
