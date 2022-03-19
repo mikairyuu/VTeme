@@ -322,7 +322,7 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 23
         targetSdkVersion 30
         versionName "8.6.1"
 
