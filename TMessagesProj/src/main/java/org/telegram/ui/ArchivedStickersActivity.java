@@ -297,7 +297,7 @@ public class ArchivedStickersActivity extends BaseFragment implements Notificati
         }
     }
 
-    private class ListAdapter extends RecyclerListView.SelectionAdapter {
+    public class ListAdapter extends RecyclerListView.SelectionAdapter {
 
         private Context mContext;
 
