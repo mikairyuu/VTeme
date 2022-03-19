@@ -39,6 +39,11 @@ dependencies {
     implementation 'com.google.mlkit:language-id:16.1.1'
     implementation files('libs/libgsaverification-client.aar')
 
+    //VTeme Gradle Imports
+    implementation 'com.vk:android-sdk-core:3.5.1'
+    implementation 'com.vk:android-sdk-api:3.5.1'
+    implementation "androidx.security:security-crypto:1.0.0"
+
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 }
 
