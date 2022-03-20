@@ -9,6 +9,7 @@
 package org.telegram.tgnet;
 
 public class TLObject {
+    public boolean isVK = false;
 
     public int networkType;
 
