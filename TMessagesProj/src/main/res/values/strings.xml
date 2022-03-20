@@ -121,6 +121,13 @@
     <string name="PaymentCheckoutEmail">Contact address</string>
     <string name="PaymentCheckoutShippingMethod">Shipping method</string>
     <string name="PaymentReceipt">Receipt</string>
+    <string name="SocialNetworks">Social Networks</string>
+    <string name="About">About</string>
+    <string name="VK">VK</string>
+    <integer name="com_vk_sdk_AppId">8109034</integer>
+    <string name="FaceBook">FaceBook</string>
+    <string name="SourceCode">Source Code</string>
+    <string name="OfficialChannel">Official Channel</string>
     <string name="PaymentConfirmationNewCard">Choose a different card</string>
     <string name="PaymentConfirmationMessage">Your card %1$s is on file. To pay with this card, please enter your 2-Step-Verification password.</string>
     <string name="PaymentPrecheckoutFailed">Sorry, the payment was cancelled by the bot.</string>

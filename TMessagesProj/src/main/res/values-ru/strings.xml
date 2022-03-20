@@ -3,4 +3,9 @@
     <string name="AppName">@string/VTeme</string>
     <string name="VTeme">ВТеме</string>
     <string name="VTemeSettings">ВТеме Настройки</string>
+    <string name="SocialNetworks">Соц. Сети</string>
+    <string name="OfficialChannel">Официальный канал</string>
+    <string name="SourceCode">Исходный код</string>
+    <string name="VK">ВК</string>
+    <string name="FaceBook">FaceBook</string>
 </resources>
