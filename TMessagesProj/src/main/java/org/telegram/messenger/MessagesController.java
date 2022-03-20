@@ -25,10 +25,20 @@ import android.util.SparseArray;
 import android.util.SparseBooleanArray;
 import android.util.SparseIntArray;
 
+import androidx.annotation.NonNull;
 import androidx.collection.LongSparseArray;
 import androidx.core.app.NotificationManagerCompat;
 import androidx.core.util.Consumer;
 
+import com.vk.api.sdk.VK;
+import com.vk.api.sdk.VKApiCallback;
+import com.vk.sdk.api.messages.MessagesService;
+import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
+import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
+
+import org.lightfire.vteme.VTemeConfig;
+import org.lightfire.vteme.utils.DelegateWaiter;
+import org.lightfire.vteme.vkapi.DTOConverters;
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteException;
 import org.telegram.SQLite.SQLitePreparedStatement;
@@ -7021,15 +7031,43 @@ public class MessagesController extends BaseController implements NotificationCe
                     req.offset_peer = new TLRPC.TL_inputPeerEmpty();
                 }
             }
-            getConnectionsManager().sendRequest(req, (response, error) -> {
-                if (error == null) {
-                    TLRPC.messages_Dialogs dialogsRes = (TLRPC.messages_Dialogs) response;
-                    processLoadedDialogs(dialogsRes, null, folderId, 0, count, 0, false, false, false);
-                    if (onEmptyCallback != null && dialogsRes.dialogs.isEmpty()) {
+            DelegateWaiter<TLRPC.messages_Dialogs, List<MessagesConversationWithMessage>> waiter = new DelegateWaiter<>((r1, r2) -> {
+                if (r1 != null) {
+                    if (r2 != null) {
+                        for (MessagesConversationWithMessage msg : r2){
+                            TLObject res = DTOConverters.VKConversationConverter(msg);
+                            if(res instanceof TLRPC.TL_chat){
+                                r1.chats.add((TLRPC.Chat) res);
+                            }else{
+                                r1.dialogs.add((TLRPC.Dialog) res);
+                            }
+                            r1.messages.add(DTOConverters.VKMessageConverter(msg.getLastMessage()));
+                        }
+                    }
+                    processLoadedDialogs(r1, null, folderId, 0, count, 0, false, false, false);
+                    if (onEmptyCallback != null && r1.dialogs.isEmpty()) {
                         AndroidUtilities.runOnUIThread(onEmptyCallback);
                     }
                 }
             });
+            getConnectionsManager().sendRequest(req, (response, error) -> {
+                waiter.firstFinished(error == null ? (TLRPC.messages_Dialogs) response : null);
+            });
+            if (VTemeConfig.VKToken != null) {
+                VK.execute(new MessagesService().messagesGetConversations(null, 10, null, null, null, null), new VKApiCallback<MessagesGetConversationsResponse>() {
+                    @Override
+                    public void success(MessagesGetConversationsResponse messagesGetConversationsResponse) {
+                        waiter.secondFinished(messagesGetConversationsResponse.component2());
+                    }
+
+                    @Override
+                    public void fail(@NonNull Exception e) {
+                        waiter.secondFinished(null);
+                    }
+                });
+            } else {
+                waiter.secondFinished(null);
+            }
         }
     }
 
