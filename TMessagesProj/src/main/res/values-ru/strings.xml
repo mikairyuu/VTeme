@@ -8,4 +8,6 @@
     <string name="SourceCode">Исходный код</string>
     <string name="VK">ВК</string>
     <string name="FaceBook">FaceBook</string>
+    <string name="UserId">Id пользователя:</string>
+    <string name="SignedIn">Войден  как</string>
 </resources>

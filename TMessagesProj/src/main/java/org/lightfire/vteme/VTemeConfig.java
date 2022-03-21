@@ -11,6 +11,7 @@ import static org.lightfire.vteme.config.ConfigItem.configTypeString;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
+import android.util.Log;
 
 import com.vk.api.sdk.VKKeyValueStorage;
 import com.vk.api.sdk.auth.VKAccessToken;

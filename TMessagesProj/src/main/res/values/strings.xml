@@ -124,6 +124,8 @@
     <string name="SocialNetworks">Social Networks</string>
     <string name="About">About</string>
     <string name="VK">VK</string>
+    <string name="UserId">User Id:</string>
+    <string name="SignedIn">Sign in as</string>
     <integer name="com_vk_sdk_AppId">8109034</integer>
     <string name="FaceBook">FaceBook</string>
     <string name="SourceCode">Source Code</string>

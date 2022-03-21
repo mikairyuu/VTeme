@@ -179,9 +179,7 @@ public class VTemeSettingsActivity extends BaseFragment {
                 }
                 case 2: {
                     ManageLinksActivity.TextCell textCell = (ManageLinksActivity.TextCell) holder.itemView;
-                    if (position == VkRow) {
-                        textCell.setTextAndIcon(LocaleController.getString("VK", R.string.VK), mContext.getResources().getDrawable(R.drawable.device_phone_android), true);
-                    } else if (position == FaceBookRow) {
+                    if (position == FaceBookRow) {
                         textCell.setTextAndIcon(LocaleController.getString("FaceBook", R.string.FaceBook), mContext.getResources().getDrawable(R.drawable.ab_progress), true);
                     }
                     break;
@@ -201,6 +199,18 @@ public class VTemeSettingsActivity extends BaseFragment {
                         headerCell.setText(LocaleController.getString("SocialNetworks", R.string.SocialNetworks));
                     } else if (position == aboutRow) {
                         headerCell.setText(LocaleController.getString("About", R.string.About));
+                    }
+                    break;
+                }
+                case 6: {
+                    TextDetailSettingsCell textDetailSettingsCell = (TextDetailSettingsCell) holder.itemView;
+                    if (position == VkRow) {
+                        if (VTemeConfig.VKToken == null)
+                            textDetailSettingsCell.setTextAndValueAndIcon(LocaleController.getString("VK", R.string.VK), null, R.drawable.device_phone_android, true);
+                        else
+                            textDetailSettingsCell.setTextAndValueAndIcon(LocaleController.getString("VK", R.string.VK), LocaleController.getString("SignedIn", R.string.SignedIn) + " "
+                                    + LocaleController.getString("UserId", R.string.UserId) + VTemeConfig.VKToken.getUserId(), R.drawable.device_phone_android, true);
+
                     }
                     break;
                 }
@@ -253,10 +263,12 @@ public class VTemeSettingsActivity extends BaseFragment {
         public int getItemViewType(int position) {
             if (position == categories2Row || position == about2Row) {
                 return 1;
-            } else if (position == FaceBookRow || position == VkRow) {
+            } else if (position == FaceBookRow) {
                 return 2;
             } else if (position == SocialNetworksRow || position == aboutRow) {
                 return 4;
+            } else if (position == VkRow) {
+                return 6;
             }
             return 3;
         }
