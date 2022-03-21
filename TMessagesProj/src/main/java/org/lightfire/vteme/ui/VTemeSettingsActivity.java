@@ -130,6 +130,7 @@ public class VTemeSettingsActivity extends BaseFragment {
             @Override
             public void onLogin(@NonNull VKAccessToken vkAccessToken) {
                 VTemeConfig.setVKToken(vkAccessToken);
+                getMessagesController().forceResetDialogs();
             }
         };
         VK.onActivityResult(requestCode, resultCode, data, callback);
