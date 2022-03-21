@@ -106,5 +106,6 @@ public class VTemeConfig {
 
     public static void setVKToken(VKAccessToken vkAccessToken){
         vkAccessToken.save(vkKeyValueStorage);
+        VKToken = vkAccessToken;
     }
 }
