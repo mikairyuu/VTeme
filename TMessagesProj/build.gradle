@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: "kotlin-android"
 
 repositories {
     mavenCentral()
@@ -45,6 +46,9 @@ dependencies {
     implementation 'com.vk:android-sdk-api:3.5.1'
     implementation "androidx.security:security-crypto:1.0.0"
 
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.10"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2"
+
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 }
 
@@ -78,6 +82,10 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
 
         coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
 
     signingConfigs {
