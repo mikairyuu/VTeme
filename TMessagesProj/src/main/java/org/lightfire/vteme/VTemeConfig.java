@@ -99,12 +99,16 @@ public class VTemeConfig {
                     }
                 }
             }
-            VKToken = VKAccessToken.Companion.restore(vkKeyValueStorage);
+            try {
+                VKToken = VKAccessToken.Companion.restore(vkKeyValueStorage);
+            } catch (Exception e) {
+                VKToken = null;
+            }
             configLoaded = true;
         }
     }
 
-    public static void setVKToken(VKAccessToken vkAccessToken){
+    public static void setVKToken(VKAccessToken vkAccessToken) {
         vkAccessToken.save(vkKeyValueStorage);
         VKToken = vkAccessToken;
     }
