@@ -73,6 +73,8 @@ import com.google.firebase.appindexing.Action;
 import com.google.firebase.appindexing.FirebaseUserActions;
 import com.google.firebase.appindexing.builders.AssistActionBuilder;
 
+import org.lightfire.vteme.VTemeConfig;
+import org.lightfire.vteme.utils.UIUtil;
 import org.telegram.PhoneFormat.PhoneFormat;
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
@@ -901,6 +903,7 @@ public class LaunchActivity extends BasePermissionsActivity implements ActionBar
                 SharedConfig.BackgroundActivityPrefs.setLastCheckedBackgroundActivity(System.currentTimeMillis());
             }
         }
+        UIUtil.runOnIoDispatcher(() -> VTemeConfig.loadConfig(false));
     }
 
     private BaseFragment getClientNotActivatedFragment() {
