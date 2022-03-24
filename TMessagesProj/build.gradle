@@ -42,8 +42,7 @@ dependencies {
     implementation files('libs/libgsaverification-client.aar')
 
     //VTeme Gradle Imports
-    implementation 'com.vk:android-sdk-core:3.5.1'
-    implementation 'com.vk:android-sdk-api:3.5.1'
+    implementation 'com.github.mikairyuu:vk-android-sdk:8858d32bf0'
     implementation "androidx.security:security-crypto:1.0.0"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.10"
