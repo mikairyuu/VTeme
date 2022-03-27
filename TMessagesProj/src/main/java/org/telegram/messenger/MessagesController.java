@@ -32,9 +32,11 @@ import androidx.core.util.Consumer;
 
 import com.vk.api.sdk.VK;
 import com.vk.api.sdk.VKApiCallback;
+import com.vk.sdk.api.base.dto.BaseUserGroupFields;
 import com.vk.sdk.api.messages.MessagesService;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
+import com.vk.sdk.api.users.dto.UsersUserFull;
 
 import org.lightfire.vteme.VTemeConfig;
 import org.lightfire.vteme.utils.DelegateWaiter;
@@ -7031,43 +7033,30 @@ public class MessagesController extends BaseController implements NotificationCe
                     req.offset_peer = new TLRPC.TL_inputPeerEmpty();
                 }
             }
-            DelegateWaiter<TLRPC.messages_Dialogs, List<MessagesConversationWithMessage>> waiter = new DelegateWaiter<>((r1, r2) -> {
-                if (r1 != null) {
-                    if (r2 != null) {
-                        for (MessagesConversationWithMessage msg : r2){
-                            TLObject res = DTOConverters.VKConversationConverter(msg);
-                            if(res instanceof TLRPC.TL_chat){
-                                r1.chats.add((TLRPC.Chat) res);
-                            }else{
-                                r1.dialogs.add((TLRPC.Dialog) res);
+            getConnectionsManager().sendRequest(req, (response, error) -> {
+                if (error == null) {
+                    TLRPC.messages_Dialogs dialogsRes = (TLRPC.messages_Dialogs) response;
+                    processLoadedDialogs(dialogsRes, null, folderId, 0, count, 0, false, false, false);
+                    if (VTemeConfig.VKToken != null && folderId == 0) {
+                        VK.execute(new MessagesService().messagesGetConversations(null, 5, null, null, Arrays.asList(BaseUserGroupFields.ID, BaseUserGroupFields.NAME), null), new VKApiCallback<MessagesGetConversationsResponse>() {
+                            @Override
+                            public void success(MessagesGetConversationsResponse messagesGetConversationsResponse) {
+                                if (messagesGetConversationsResponse != null) {
+                                    getMessagesController().processDialogsUpdate(DTOConverters.VKDialogsConverter(messagesGetConversationsResponse), null, false);
+                                }
                             }
-                            r1.messages.add(DTOConverters.VKMessageConverter(msg.getLastMessage()));
-                        }
+
+                            @Override
+                            public void fail(@NonNull Exception e) {
+
+                            }
+                        });
                     }
-                    processLoadedDialogs(r1, null, folderId, 0, count, 0, false, false, false);
-                    if (onEmptyCallback != null && r1.dialogs.isEmpty()) {
+                    if (onEmptyCallback != null && dialogsRes.dialogs.isEmpty()) {
                         AndroidUtilities.runOnUIThread(onEmptyCallback);
                     }
                 }
             });
-            getConnectionsManager().sendRequest(req, (response, error) -> {
-                waiter.firstFinished(error == null ? (TLRPC.messages_Dialogs) response : null);
-            });
-            if (VTemeConfig.VKToken != null) {
-                VK.execute(new MessagesService().messagesGetConversations(null, 10, null, null, null, null), new VKApiCallback<MessagesGetConversationsResponse>() {
-                    @Override
-                    public void success(MessagesGetConversationsResponse messagesGetConversationsResponse) {
-                        waiter.secondFinished(messagesGetConversationsResponse.component2());
-                    }
-
-                    @Override
-                    public void fail(@NonNull Exception e) {
-                        waiter.secondFinished(null);
-                    }
-                });
-            } else {
-                waiter.secondFinished(null);
-            }
         }
     }
 

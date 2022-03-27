@@ -27,13 +27,22 @@ import com.vk.api.sdk.auth.VKAccessToken;
 import com.vk.api.sdk.auth.VKAuthCallback;
 import com.vk.api.sdk.auth.VKScope;
 import com.vk.api.sdk.exceptions.VKAuthException;
+import com.vk.sdk.api.base.dto.BaseUserGroupFields;
+import com.vk.sdk.api.messages.MessagesService;
+import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
+import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
+import com.vk.sdk.api.users.dto.UsersUserFull;
 
 import org.lightfire.vteme.VTemeConfig;
+import org.lightfire.vteme.vkapi.DTOConverters;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
+import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.browser.Browser;
+import org.telegram.tgnet.TLObject;
+import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenu;
 import org.telegram.ui.ActionBar.ActionBarMenuItem;
@@ -57,6 +66,7 @@ import org.telegram.ui.ManageLinksActivity;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 
 public class VTemeSettingsActivity extends BaseFragment {
@@ -99,6 +109,7 @@ public class VTemeSettingsActivity extends BaseFragment {
         listView.setOnItemClickListener((view, position, x, y) -> {
             if (position == VkRow) {
                 ArrayList<VKScope> VkStuff = new ArrayList<>();
+                VkStuff.add(VKScope.MESSAGES);
                 VK.login(getParentActivity(), VkStuff);
             } else if (position == FaceBookRow) {
             } else if (position == channelRow) {
@@ -118,6 +129,22 @@ public class VTemeSettingsActivity extends BaseFragment {
         }
     }
 
+    private void loadVKMessages(){
+        VK.execute(new MessagesService().messagesGetConversations(null, 5, null, null, Arrays.asList(BaseUserGroupFields.ID, BaseUserGroupFields.NAME), null), new VKApiCallback<MessagesGetConversationsResponse>() {
+            @Override
+            public void success(MessagesGetConversationsResponse vkMsg) {
+                if (vkMsg != null) {
+                    getMessagesController().processDialogsUpdate(DTOConverters.VKDialogsConverter(vkMsg), null, false);
+                }
+            }
+
+            @Override
+            public void fail(@NonNull Exception e) {
+
+            }
+        });
+    }
+
     @Override
     public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
         VKAuthCallback callback = new VKAuthCallback() {
@@ -125,12 +152,13 @@ public class VTemeSettingsActivity extends BaseFragment {
             @Override
             public void onLoginFailed(@NonNull VKAuthException e) {
                 Toast.makeText(getParentActivity(), "Ошибка входа...", Toast.LENGTH_LONG).show();
+                loadVKMessages(); //TEMP
             }
 
             @Override
             public void onLogin(@NonNull VKAccessToken vkAccessToken) {
                 VTemeConfig.setVKToken(vkAccessToken);
-                getMessagesController().forceResetDialogs();
+                loadVKMessages();
             }
         };
         VK.onActivityResult(requestCode, resultCode, data, callback);
