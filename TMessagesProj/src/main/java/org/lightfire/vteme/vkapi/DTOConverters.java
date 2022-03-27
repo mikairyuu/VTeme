@@ -20,8 +20,10 @@ public class DTOConverters {
         resMsg.message = message.getText();
         resMsg.date = message.getDate();
         resMsg.views = 0;
-        resMsg.id = message.getId();
-        resMsg.peer_id = makeVk(new TLRPC.TL_peerUser());
+        resMsg.id = message.getConversationMessageId();
+        resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
+        resMsg.random_id = message.getRandomId();
+        resMsg.dialog_id = isChat ? -message.getPeerId() : message.getPeerId();
         if (isChat)
             resMsg.peer_id.chat_id = message.getPeerId();
         else
@@ -32,23 +34,29 @@ public class DTOConverters {
     }
 
     // Chat is nullable
-    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversationWithMessage conversation) {
-        MessagesConversation conv = conversation.getConversation();
+    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversationWithMessage conversationWithMessage) {
+        MessagesConversation conv = conversationWithMessage.getConversation();
         TLRPC.TL_dialog ret_dialog = makeVk(new TLRPC.TL_dialog());
         Pair<TLRPC.TL_dialog, TLRPC.TL_chat> retPair;
         ret_dialog.unread_count = conv.getUnreadCount() == null ? 0 : conv.getUnreadCount();
-        ret_dialog.peer = makeVk(new TLRPC.TL_peerUser());
-        ret_dialog.last_message_date = conversation.getLastMessage().getDate();
+        ret_dialog.last_message_date = conversationWithMessage.getLastMessage().getDate();
         ret_dialog.top_message = conv.getLastMessageId();
+        ret_dialog.id = conv.getPeer().getId();
+        ret_dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
+        ret_dialog.read_inbox_max_id = conv.getInRead();
+        ret_dialog.read_outbox_max_id = conv.getOutRead();
+        if (conv.getPushSettings() != null)
+            ret_dialog.notify_settings.mute_until = conv.getPushSettings().getDisabledForever() ? Integer.MAX_VALUE : conv.getPushSettings().getDisabledUntil();
         if (conv.getPeer().getType().getValue().equals("user")) {
+            ret_dialog.peer = makeVk(new TLRPC.TL_peerUser());
             ret_dialog.peer.user_id = conv.getPeer().getId();
             retPair = new Pair<>(ret_dialog, null);
         } else if (conv.getPeer().getType().getValue().equals("chat")) {
             TLRPC.TL_chat retChat = makeVk(new TLRPC.TL_chat());
             retChat.title = conv.getChatSettings().getTitle();
             retChat.participants_count = conv.getChatSettings().getMembersCount();
-            retChat.id = conv.getSortId().getMinorId();
-            ret_dialog.peer.chat_id = retChat.id;
+            ret_dialog.id = -ret_dialog.id;
+            retChat.id = conv.getPeer().getId();
             retChat.version = 0;
             retPair = new Pair<>(ret_dialog, retChat);
         } else {
