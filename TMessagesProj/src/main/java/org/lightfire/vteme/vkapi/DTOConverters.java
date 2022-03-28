@@ -21,7 +21,7 @@ public class DTOConverters {
         boolean isChat = message.getPeerId() >= 2000000000;
         resMsg.message = message.getText();
         resMsg.date = message.getDate();
-        resMsg.views = 0;
+        resMsg.out = message.getOut().getValue() == 1;
         resMsg.id = message.getConversationMessageId();
         resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
         resMsg.random_id = message.getRandomId();
