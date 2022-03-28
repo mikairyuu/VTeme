@@ -36,6 +36,8 @@ import com.vk.sdk.api.base.dto.BaseUserGroupFields;
 import com.vk.sdk.api.messages.MessagesService;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
+import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
+import com.vk.sdk.api.users.dto.UsersFields;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
 import org.lightfire.vteme.VTemeConfig;
@@ -2203,12 +2205,14 @@ public class MessagesController extends BaseController implements NotificationCe
                 inputPeer = new TLRPC.TL_inputPeerChat();
                 inputPeer.chat_id = -id;
             }
+            inputPeer.isVK = chat.isVK;
         } else {
             TLRPC.User user = getUser(id);
             inputPeer = new TLRPC.TL_inputPeerUser();
             inputPeer.user_id = id;
             if (user != null) {
                 inputPeer.access_hash = user.access_hash;
+                inputPeer.isVK = user.isVK;
             }
         }
         return inputPeer;
@@ -6435,9 +6439,9 @@ public class MessagesController extends BaseController implements NotificationCe
                 });
                 getConnectionsManager().bindRequestToGuid(reqId, classGuid);
             } else {
-                if (loadDialog && (load_type == 3 || load_type == 2) && last_message_id == 0) {
+                TLRPC.InputPeer inputPeer = getInputPeer(dialogId);
+                if (loadDialog && (load_type == 3 || load_type == 2) && last_message_id == 0 && !inputPeer.isVK) {
                     TLRPC.TL_messages_getPeerDialogs req = new TLRPC.TL_messages_getPeerDialogs();
-                    TLRPC.InputPeer inputPeer = getInputPeer(dialogId);
                     TLRPC.TL_inputDialogPeer inputDialogPeer = new TLRPC.TL_inputDialogPeer();
                     inputDialogPeer.peer = inputPeer;
                     req.peers.add(inputDialogPeer);
@@ -6466,7 +6470,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     return;
                 }
                 TLRPC.TL_messages_getHistory req = new TLRPC.TL_messages_getHistory();
-                req.peer = getInputPeer(dialogId);
+                req.peer = inputPeer;
                 if (load_type == 4) {
                     req.add_offset = -count + 5;
                 } else if (load_type == 3) {
@@ -6487,30 +6491,45 @@ public class MessagesController extends BaseController implements NotificationCe
                 req.limit = count;
                 req.offset_id = max_id;
                 req.offset_date = offset_date;
-                int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
-                    if (response != null) {
-                        TLRPC.messages_Messages res = (TLRPC.messages_Messages) response;
-                        removeDeletedMessagesFromArray(dialogId, res.messages);
-                        if (res.messages.size() > count) {
-                            res.messages.remove(0);
-                        }
-                        int mid = max_id;
-                        if (offset_date != 0 && !res.messages.isEmpty()) {
-                            mid = res.messages.get(res.messages.size() - 1).id;
-                            for (int a = res.messages.size() - 1; a >= 0; a--) {
-                                TLRPC.Message message = res.messages.get(a);
-                                if (message.date > offset_date) {
-                                    mid = message.id;
-                                    break;
+                if(!inputPeer.isVK) {
+                    int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
+                        if (response != null) {
+                            TLRPC.messages_Messages res = (TLRPC.messages_Messages) response;
+                            removeDeletedMessagesFromArray(dialogId, res.messages);
+                            if (res.messages.size() > count) {
+                                res.messages.remove(0);
+                            }
+                            int mid = max_id;
+                            if (offset_date != 0 && !res.messages.isEmpty()) {
+                                mid = res.messages.get(res.messages.size() - 1).id;
+                                for (int a = res.messages.size() - 1; a >= 0; a--) {
+                                    TLRPC.Message message = res.messages.get(a);
+                                    if (message.date > offset_date) {
+                                        mid = message.id;
+                                        break;
+                                    }
                                 }
                             }
+                            processLoadedMessages(res, res.messages.size(), dialogId, mergeDialogId, count, mid, offset_date, false, classGuid, first_unread, last_message_id, unread_count, last_date, load_type, false, 0, threadMessageId, loadIndex, queryFromServer, mentionsCount, processMessages);
+                        } else {
+                            AndroidUtilities.runOnUIThread(() -> getNotificationCenter().postNotificationName(NotificationCenter.loadingMessagesFailed, classGuid, req, error));
                         }
-                        processLoadedMessages(res, res.messages.size(), dialogId, mergeDialogId, count, mid, offset_date, false, classGuid, first_unread, last_message_id, unread_count, last_date, load_type, false, 0, threadMessageId, loadIndex, queryFromServer, mentionsCount, processMessages);
-                    } else {
-                        AndroidUtilities.runOnUIThread(() -> getNotificationCenter().postNotificationName(NotificationCenter.loadingMessagesFailed, classGuid, req, error));
-                    }
-                });
-                getConnectionsManager().bindRequestToGuid(reqId, classGuid);
+                    });
+                    getConnectionsManager().bindRequestToGuid(reqId, classGuid);
+                } else {
+                    VK.execute(new MessagesService().messagesGetHistoryExtended(req.add_offset, req.limit, null, (int) (req.peer.user_id == 0 ? req.peer.chat_id : req.peer.user_id), req.offset_id, null, Arrays.asList(UsersFields.SCREEN_NAME), null), new VKApiCallback<MessagesGetHistoryExtendedResponse>() {
+                        @Override
+                        public void success(MessagesGetHistoryExtendedResponse messagesRes) {
+                            TLRPC.messages_Messages messages = DTOConverters.VKMessagesResponseConverter(messagesRes);
+                            processLoadedMessages(messages, messagesRes.getItems().size(), dialogId, mergeDialogId, count, max_id, offset_date, false, classGuid, first_unread, last_message_id, unread_count, last_date, load_type, false, 0, threadMessageId, loadIndex, queryFromServer, mentionsCount, processMessages);
+                        }
+
+                        @Override
+                        public void fail(@NonNull Exception e) {
+                            AndroidUtilities.runOnUIThread(() -> getNotificationCenter().postNotificationName(NotificationCenter.loadingMessagesFailed, classGuid, req, null));
+                        }
+                    });
+                }
             }
         }
     }

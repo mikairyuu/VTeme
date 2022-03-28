@@ -8,6 +8,7 @@ import com.vk.api.sdk.VK;
 import com.vk.sdk.api.messages.dto.MessagesConversation;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
+import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
@@ -15,8 +16,9 @@ import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 
 public class DTOConverters {
-    public static TLRPC.TL_message VKMessageConverter(MessagesMessage message, boolean isChat) {
+    public static TLRPC.TL_message VKMessageConverter(MessagesMessage message) {
         TLRPC.TL_message resMsg = makeVk(new TLRPC.TL_message());
+        boolean isChat = message.getPeerId() >= 2000000000;
         resMsg.message = message.getText();
         resMsg.date = message.getDate();
         resMsg.views = 0;
@@ -39,14 +41,15 @@ public class DTOConverters {
         TLRPC.TL_dialog ret_dialog = makeVk(new TLRPC.TL_dialog());
         Pair<TLRPC.TL_dialog, TLRPC.TL_chat> retPair;
         ret_dialog.unread_count = conv.getUnreadCount() == null ? 0 : conv.getUnreadCount();
-        ret_dialog.last_message_date = conversationWithMessage.getLastMessage().getDate();
+        if (conversationWithMessage.getLastMessage() != null)
+            ret_dialog.last_message_date = conversationWithMessage.getLastMessage().getDate();
         ret_dialog.top_message = conv.getLastMessageId();
         ret_dialog.id = conv.getPeer().getId();
         ret_dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
         ret_dialog.read_inbox_max_id = conv.getInRead();
         ret_dialog.read_outbox_max_id = conv.getOutRead();
         if (conv.getPushSettings() != null)
-            ret_dialog.notify_settings.mute_until = conv.getPushSettings().getDisabledForever() ? Integer.MAX_VALUE : conv.getPushSettings().getDisabledUntil();
+            ret_dialog.notify_settings.mute_until = conv.getPushSettings().getDisabledForever() ? Integer.MAX_VALUE : 0;
         if (conv.getPeer().getType().getValue().equals("user")) {
             ret_dialog.peer = makeVk(new TLRPC.TL_peerUser());
             ret_dialog.peer.user_id = conv.getPeer().getId();
@@ -83,12 +86,29 @@ public class DTOConverters {
             if (res.second != null) {
                 TGDialogs.chats.add(res.second);
             }
-            TGDialogs.messages.add(DTOConverters.VKMessageConverter(msg.getLastMessage(), res.second != null));
+            TGDialogs.messages.add(DTOConverters.VKMessageConverter(msg.getLastMessage()));
         }
         for (UsersUserFull user : VKDialogs.getProfiles()) {
             TGDialogs.users.add(DTOConverters.VKUserConverter(user));
         }
         return TGDialogs;
+    }
+
+    public static TLRPC.messages_Messages VKMessagesResponseConverter(MessagesGetHistoryExtendedResponse messages) {
+        TLRPC.messages_Messages res = new TLRPC.TL_messages_messagesSlice();
+        res.count = messages.getCount();
+        for (MessagesMessage message : messages.getItems()) {
+            res.messages.add(VKMessageConverter(message));
+        }
+        if (messages.getProfiles() != null)
+            for (UsersUserFull user : messages.getProfiles()) {
+                res.users.add(VKUserConverter(user));
+            }
+        if (messages.getConversations() != null)
+            for (MessagesConversation conversation : messages.getConversations()) {
+                VKConversationConverter(new MessagesConversationWithMessage(conversation, null));
+            }
+        return res;
     }
 
     public static <T extends TLObject> T makeVk(T object) {
