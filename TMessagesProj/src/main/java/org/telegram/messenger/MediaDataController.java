@@ -2554,6 +2554,9 @@ public class MediaDataController extends BaseController {
     }
 
     public void getMediaCounts(long dialogId, int classGuid) {
+        if (getMessagesController().dialogs_dict.get(dialogId).isVK) {
+            return;
+        }
         getMessagesStorage().getStorageQueue().postRunnable(() -> {
             try {
                 int[] counts = new int[]{-1, -1, -1, -1, -1, -1, -1, -1};

@@ -3446,7 +3446,7 @@ public class MessagesController extends BaseController implements NotificationCe
 
     public void loadFullChat(long chatId, int classGuid, boolean force) {
         boolean loaded = loadedFullChats.contains(chatId);
-        if (loadingFullChats.contains(chatId) || !force && loaded) {
+        if (loadingFullChats.contains(chatId) || !force && loaded || getChat(chatId).isVK) {
             return;
         }
         loadingFullChats.add(chatId);
@@ -3836,7 +3836,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadPeerSettings(TLRPC.User currentUser, TLRPC.Chat currentChat) {
-        if (currentUser == null && currentChat == null) {
+        if (currentUser == null && currentChat == null || currentChat != null && currentChat.isVK) {
             return;
         }
         long dialogId;
@@ -6414,6 +6414,9 @@ public class MessagesController extends BaseController implements NotificationCe
             } else if (mode == 2) {
 
             } else if (mode == 1) {
+                if(dialogs_dict.get(dialogId).isVK){
+                    return;
+                }
                 TLRPC.TL_messages_getScheduledHistory req = new TLRPC.TL_messages_getScheduledHistory();
                 req.peer = getInputPeer(dialogId);
                 req.hash = minDate;
@@ -8673,7 +8676,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadReactionsForMessages(long dialogId, ArrayList<MessageObject> visibleObjects) {
-        if (visibleObjects.isEmpty()) {
+        if (visibleObjects.isEmpty() || getMessagesController().dialogs_dict.get(dialogId).isVK) {
             return;
         }
         TLRPC.TL_messages_getMessagesReactions req = new TLRPC.TL_messages_getMessagesReactions();
