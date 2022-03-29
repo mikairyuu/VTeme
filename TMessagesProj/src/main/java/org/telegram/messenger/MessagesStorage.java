@@ -71,6 +71,13 @@ public class MessagesStorage extends BaseController {
     private int lastSavedDate = 0;
     private int lastSavedQts = 0;
 
+    private int vkLastPtsValue = 0;
+    private int vkLastTsValue = 0;
+    private int vkLastDateValue = 0;
+
+    private int vkLastSavedTs = 0;
+    private int vkLastSavedPts = 0;
+
     private ArrayList<MessagesController.DialogFilter> dialogFilters = new ArrayList<>();
     private SparseArray<MessagesController.DialogFilter> dialogFiltersMap = new SparseArray<>();
     private LongSparseArray<Boolean> unknownDialogsIds = new LongSparseArray<>();
@@ -113,6 +120,11 @@ public class MessagesStorage extends BaseController {
         return lastDateValue;
     }
 
+    public int getVKLastDateValue() {
+        ensureOpened();
+        return vkLastDateValue;
+    }
+
     public void setLastDateValue(int value) {
         ensureOpened();
         lastDateValue = value;
@@ -121,6 +133,16 @@ public class MessagesStorage extends BaseController {
     public int getLastPtsValue() {
         ensureOpened();
         return lastPtsValue;
+    }
+
+    public int getVKLastPtsValue() {
+        ensureOpened();
+        return vkLastPtsValue;
+    }
+
+    public int getVkLastTsValue() {
+        ensureOpened();
+        return vkLastPtsValue;
     }
 
     public int getMainUnreadCount() {
@@ -134,6 +156,11 @@ public class MessagesStorage extends BaseController {
     public void setLastPtsValue(int value) {
         ensureOpened();
         lastPtsValue = value;
+    }
+
+    public void setVKLastPtsValue(int value) {
+        ensureOpened();
+        vkLastPtsValue = value;
     }
 
     public int getLastQtsValue() {
@@ -327,6 +354,9 @@ public class MessagesStorage extends BaseController {
                 database.executeFast("CREATE TABLE params(id INTEGER PRIMARY KEY, seq INTEGER, pts INTEGER, date INTEGER, qts INTEGER, lsv INTEGER, sg INTEGER, pbytes BLOB)").stepThis().dispose();
                 database.executeFast("INSERT INTO params VALUES(1, 0, 0, 0, 0, 0, 0, NULL)").stepThis().dispose();
 
+                database.executeFast("CREATE TABLE vkparams(id INTEGER PRIMARY KEY, ts INTEGER, pts INTEGER)").stepThis().dispose();
+                database.executeFast("INSERT INTO vkparams VALUES(1, 0, 0)").stepThis().dispose();
+
                 database.executeFast("CREATE TABLE media_v4(mid INTEGER, uid INTEGER, date INTEGER, type INTEGER, data BLOB, PRIMARY KEY(mid, uid, type))").stepThis().dispose();
                 database.executeFast("CREATE INDEX IF NOT EXISTS uid_mid_type_date_idx_media_v4 ON media_v4(uid, mid, type, date);").stepThis().dispose();
 
@@ -421,6 +451,12 @@ public class MessagesStorage extends BaseController {
                                 secretPBytes = null;
                             }
                         }
+                    }
+                    cursor.dispose();
+                    cursor = database.queryFinalized("SELECT ts, pts, date FROM vkparams WHERE id = 1");
+                    if (cursor.next()) {
+                        vkLastSavedTs = cursor.intValue(0);
+                        vkLastSavedPts = cursor.intValue(1);
                     }
                     cursor.dispose();
                 } catch (Exception e) {
@@ -1998,8 +2034,29 @@ public class MessagesStorage extends BaseController {
         }
     }
 
+    private void saveVKDiffParamsInternal(int ts, int pts) {
+        try {
+            if (vkLastSavedTs == ts && vkLastSavedPts == pts) {
+                return;
+            }
+            SQLitePreparedStatement state = database.executeFast("UPDATE params SET seq = ?, pts = ?, date = ?, qts = ? WHERE id = 1");
+            state.bindInteger(1, ts);
+            state.bindInteger(2, pts);
+            state.step();
+            state.dispose();
+            vkLastSavedTs = ts;
+            vkLastSavedPts = pts;
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+    }
+
     public void saveDiffParams(int seq, int pts, int date, int qts) {
         storageQueue.postRunnable(() -> saveDiffParamsInternal(seq, pts, date, qts));
+    }
+
+    public void saveVKDiffParams(int ts, int pts) {
+        storageQueue.postRunnable(() -> saveVKDiffParamsInternal(ts, pts));
     }
 
     public void updateMutedDialogsFiltersCounters() {
