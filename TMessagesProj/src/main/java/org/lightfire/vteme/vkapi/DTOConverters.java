@@ -60,6 +60,7 @@ public class DTOConverters {
             retChat.participants_count = conv.getChatSettings().getMembersCount();
             ret_dialog.id = -ret_dialog.id;
             retChat.id = conv.getPeer().getId();
+            retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
             retChat.version = 0;
             retPair = new Pair<>(ret_dialog, retChat);
         } else {
