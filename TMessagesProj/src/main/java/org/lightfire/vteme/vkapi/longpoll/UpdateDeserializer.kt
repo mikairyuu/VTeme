@@ -184,14 +184,28 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
         return LPServerResponseWrapper(obj.get("ts").asInt, updateList)
     }
 
-    private fun parseMessageExtraFields(startIndex: Int, array: JsonArray): MessageExtraFields {
-        return MessageExtraFields(
-            array[startIndex].asInt,
-            array[startIndex + 1].asInt,
-            array[startIndex + 2].asString,
-            null,
-            array[startIndex + 4].asInt
-        )
+    private fun parseMessageExtraFields(startIndex: Int, array: JsonArray): MessageExtraFields? {
+        val fieldCount = array.size() - startIndex
+        if (fieldCount != 0) {
+            if (fieldCount > 1) {
+                return MessageExtraFields(
+                    array[startIndex].asInt,
+                    array[startIndex + 1].asInt,
+                    array[startIndex + 2].asString,
+                    null,
+                    array[startIndex + 4].asInt
+                )
+            } else {
+                return MessageExtraFields(
+                    array[startIndex].asInt,
+                    null,
+                    null,
+                    null,
+                    null
+                )
+            }
+        } else {
+            return null
+        }
     }
-
 }

@@ -7,36 +7,36 @@ data class LPServerResponseWrapper(
 
 data class MessageExtraFields(
     var peer_id: Int,
-    var timestamp: Int,
-    var text: String,
+    var timestamp: Int?,
+    var text: String?,
     var attachments : Any? = null,
-    var random_id: Int,
+    var random_id: Int?,
 )
 
 // 1
 data class MessageFlagsChanged(
     var message_id: Int,
     var flags: Int,
-    var extraFields: MessageExtraFields
+    var extraFields: MessageExtraFields?
 )
 // 2
 data class MessageFlagsSet(
     var message_id: Int,
     var mask: Int,
-    var extraFields: MessageExtraFields
+    var extraFields: MessageExtraFields?
 )
 // 3
 data class MessageFlagsReset(
     var message_id: Int,
     var mask: Int,
-    var extraFields: MessageExtraFields
+    var extraFields: MessageExtraFields?
 )
 // 4
 data class NewMessageAdded(
     var message_id: Int,
     var flags: Int,
     var minor_id: Int,
-    var extraFields: MessageExtraFields
+    var extraFields: MessageExtraFields?
 )
 // 5
 data class MessageEdited(
