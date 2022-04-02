@@ -188,12 +188,13 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
         val fieldCount = array.size() - startIndex
         if (fieldCount != 0) {
             if (fieldCount > 1) {
+                val attachments = array[startIndex + 3].asJsonObject
                 return MessageExtraFields(
                     array[startIndex].asInt,
                     array[startIndex + 1].asInt,
                     array[startIndex + 2].asString,
-                    null,
-                    array[startIndex + 4].asInt
+                    MessageAttachments(if (attachments.has("from")) attachments.get("from").asInt else null),
+                    0
                 )
             } else {
                 return MessageExtraFields(

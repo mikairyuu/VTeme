@@ -9,8 +9,13 @@ data class MessageExtraFields(
     var peer_id: Int,
     var timestamp: Int?,
     var text: String?,
-    var attachments : Any? = null,
+    var attachments : MessageAttachments? = null,
     var random_id: Int?,
+)
+
+data class MessageAttachments(
+    val from_id: Int?,
+    //TODO: fill the rest of attachment fields
 )
 
 // 1
