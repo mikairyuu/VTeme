@@ -134,7 +134,7 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
                 51 -> updateList.add(
                     ChatParametersChanged(
                         curArray[1].asInt,
-                        curArray[2].asInt,
+                        if (curArray.size() > 2) 1 else 0
                     )
                 )
                 52 -> updateList.add(
