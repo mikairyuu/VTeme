@@ -2853,6 +2853,10 @@ public class MessagesController extends BaseController implements NotificationCe
         return chats.get(id);
     }
 
+    public ArrayList<Long> getCreatedDialogIds() {
+        return createdDialogIds;
+    }
+
     public TLRPC.EncryptedChat getEncryptedChat(Integer id) {
         return encryptedChats.get(id);
     }
@@ -7059,21 +7063,6 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (error == null) {
                     TLRPC.messages_Dialogs dialogsRes = (TLRPC.messages_Dialogs) response;
                     processLoadedDialogs(dialogsRes, null, folderId, 0, count, 0, false, false, false);
-                    if (VTemeConfig.VKToken != null && folderId == 0) {
-                        VK.execute(new MessagesService().messagesGetConversations(null, 5, null, null, Arrays.asList(BaseUserGroupFields.ID, BaseUserGroupFields.NAME), null), new VKApiCallback<MessagesGetConversationsResponse>() {
-                            @Override
-                            public void success(MessagesGetConversationsResponse messagesGetConversationsResponse) {
-                                if (messagesGetConversationsResponse != null) {
-                                    getMessagesController().processDialogsUpdate(DTOConverters.VKDialogsConverter(messagesGetConversationsResponse), null, false);
-                                }
-                            }
-
-                            @Override
-                            public void fail(@NonNull Exception e) {
-
-                            }
-                        });
-                    }
                     if (onEmptyCallback != null && dialogsRes.dialogs.isEmpty()) {
                         AndroidUtilities.runOnUIThread(onEmptyCallback);
                     }
@@ -14597,6 +14586,10 @@ public class MessagesController extends BaseController implements NotificationCe
             getMediaDataController().increasePeerRaiting(dialogId);
         }
         return changed;
+    }
+
+    public void updateInterfaceWithVKMessages(long dialogId, ArrayList<MessageObject> messages){
+        updateInterfaceWithMessages(dialogId, messages, false);
     }
 
     public void addDialogAction(long did, boolean clean) {

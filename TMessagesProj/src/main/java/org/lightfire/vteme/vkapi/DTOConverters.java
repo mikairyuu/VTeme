@@ -5,10 +5,12 @@ import android.util.Pair;
 import androidx.annotation.Nullable;
 
 import com.vk.api.sdk.VK;
+import com.vk.sdk.api.messages.dto.MessagesChat;
 import com.vk.sdk.api.messages.dto.MessagesConversation;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
+import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
@@ -70,6 +72,16 @@ public class DTOConverters {
         return retPair;
     }
 
+    public static TLRPC.TL_chat VKConversationConverter(MessagesChat conv){
+        TLRPC.TL_chat retChat = makeVk(new TLRPC.TL_chat());
+        retChat.title = conv.getTitle();
+        retChat.participants_count = conv.getMembersCount();
+        retChat.id = conv.getId();
+        retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
+        retChat.version = 0;
+        return retChat;
+    }
+
     public static TLRPC.TL_user VKUserConverter(UsersUserFull user) {
         TLRPC.TL_user retUser = makeVk(new TLRPC.TL_user());
         retUser.id = user.getId().getValue();
@@ -111,6 +123,16 @@ public class DTOConverters {
                 VKConversationConverter(new MessagesConversationWithMessage(conversation, null));
             }
         return res;
+    }
+
+    public static TLRPC.messages_Messages VKMessagesResponseConverter(MessagesGetLongPollHistoryResponse messages) {
+        return VKMessagesResponseConverter(new MessagesGetHistoryExtendedResponse(
+                messages.getConversations().size(),
+                messages.getMessages().getItems(),
+                messages.getProfiles(),
+                messages.getGroups(),
+                messages.getConversations()
+        ));
     }
 
     public static <T extends TLObject> T makeVk(T object) {

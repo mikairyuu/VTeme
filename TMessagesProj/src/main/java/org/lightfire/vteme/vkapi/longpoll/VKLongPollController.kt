@@ -1,15 +1,21 @@
 package org.lightfire.vteme.vkapi.longpoll
 
+import androidx.collection.LongSparseArray
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.vk.api.sdk.VK
 import com.vk.api.sdk.VKApiCallback
-import com.vk.sdk.api.GsonHolder
 import com.vk.sdk.api.messages.MessagesService
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import okhttp3.*
+import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.DTO.LPServerResponseWrapper
-import org.telegram.messenger.BaseController
+import org.lightfire.vteme.vkapi.longpoll.DTO.NewMessageAdded
+import org.telegram.messenger.*
+import org.telegram.tgnet.TLRPC
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 class VKLongPollController private constructor(num: Int) : BaseController(num) {
 
@@ -17,62 +23,263 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     private var vkKey: String? = null
     private var vkServer: String? = null
 
-    private var ts: Int? = 0
-    private var pts = 0
+    private var firstDiff = true
 
-    private var okhttpClient: OkHttpClient = OkHttpClient()
-    private var pendingResponse: Response? = null
+    private val okhttpClient: OkHttpClient = OkHttpClient()
+    private val gson: Gson
 
-    fun updateServerValues() {
+    init {
+        val gsonBuilder = GsonBuilder()
+        gsonBuilder.registerTypeAdapter(LPServerResponseWrapper::class.java, UpdateDeserializer())
+        gson = gsonBuilder.create()
+    }
+
+    fun initLongPoll(onSuccessInit: Boolean = false, firstTime: Boolean = false) {
         VK.execute(
             MessagesService().messagesGetLongPollServer(true, null, 3),
             object : VKApiCallback<MessagesLongpollParams?> {
                 override fun success(result: MessagesLongpollParams?) {
-                    vkServer = result?.server
-                    vkKey = result?.key
-                    //getMessagesStorage().saveVKDiffParams(messagesLongpollParams.getTs(),messagesLongpollParams.getPts());
-                    ts = result?.ts
-                    pts = result?.pts!!
+                    if (result == null) return
+                    vkServer = result.server
+                    vkKey = result.key
+                    if (firstTime) {
+                        //TODO: Save
+                        messagesStorage.vkLastTs = result.ts
+                        messagesStorage.vkLastPts = result.pts!!
+                    }
+                    if (firstDiff && messagesStorage.vkLastTs == result.ts)
+                        firstDiff = false
+                    if (!firstDiff) {
+                        if (onSuccessInit) startPolling()
+                    } else {
+                        getHistoryDiff(result.pts!!) {
+                            if (it) {
+                                //getMessagesStorage().saveVKDiffParams(messagesLongpollParams.getTs(),messagesLongpollParams.getPts());
+                                startPolling()
+                            }
+                        }
+                    }
                 }
 
                 override fun fail(e: Exception) {}
             })
     }
 
-    fun initLP() {
-        if (okhttpClient.dispatcher.runningCallsCount() > 0) return
-        okhttpClient.newCall(
-            Request.Builder()
-                .url("https://${vkServer}?act=a_check&key=${vkKey}&ts=${ts}&wait=25&mode=${32 + 8}&version=3")
-                .build()
-        ).enqueue(object : Callback {
-            override fun onResponse(call: Call, response: Response) {
-                response.use {
-                    GsonHolder.gson.fromJson(
-                        it.body!!.charStream(),
-                        LPServerResponseWrapper::class.java
-                    )
-                }
-            }
+    fun startPolling() {
+        if (okhttpClient.dispatcher.idleCallback == null) {
+            okhttpClient.dispatcher.idleCallback = Runnable {
+                okhttpClient.newCall(
+                    Request.Builder()
+                        .url("https://${vkServer}?act=a_check&key=${vkKey}&ts=${messagesStorage.vkLastTs}&wait=25&mode=${32 + 8 + 2}&version=3")
+                        .build()
+                ).enqueue(object : Callback {
+                    override fun onResponse(call: Call, response: Response) {
+                        response.use {
+                            if (it.body != null) {
+                                processLPResult(
+                                    gson.fromJson(
+                                        it.body!!.charStream(),
+                                        LPServerResponseWrapper::class.java
+                                    )
+                                )
+                            }
+                        }
+                    }
 
-            override fun onFailure(call: Call, e: IOException) {
-                e.printStackTrace()
+                    override fun onFailure(call: Call, e: IOException) {}
+                })
             }
-        })
+            okhttpClient.dispatcher.idleCallback!!.run()
+        }
     }
 
-    fun getHistoryDiff() {
-        VK.execute(MessagesService().messagesGetLongPollHistory(
-            ts, pts,
-            null, true, null, null, null, null, null, 3, null, true
-        ),
-            object : VKApiCallback<MessagesGetLongPollHistoryResponse?> {
-                override fun success(result: MessagesGetLongPollHistoryResponse?) {
-                    cache = result
-                }
+    fun stopPolling() {
+        okhttpClient.dispatcher.idleCallback = null
+    }
 
-                override fun fail(e: Exception) {}
-            })
+    private fun processLPResult(updates: LPServerResponseWrapper) {
+        if (updates.ts == -1) {
+            initLongPoll(true)
+        } else {
+            var missingData = false
+            outer@ for (update in updates.updates) {
+                when (update) {
+                    is NewMessageAdded -> {
+                        if (update.extraFields == null) return
+                        val newMsg = DTOConverters.makeVk(TLRPC.TL_message())
+                        val peerId = update.extraFields!!.peer_id.toLong()
+                        val isChat = peerId >= 2000000000
+                        newMsg.out = (update.flags and 2) != 0
+                        val from_id =
+                            if (isChat) update.extraFields!!.attachments!!.from_id!!.toLong() else
+                                if (newMsg.out) VK.getUserId().value else peerId
+                        if (!messagesController.dialogs_dict.containsKey(if (isChat) -peerId else peerId))
+                            missingData = true
+                        if (isChat && !messagesController.users.containsKey(from_id))
+                            missingData = true
+                        if (missingData) {
+                            break@outer
+                        }
+                        newMsg.date = update.extraFields!!.timestamp!!
+                        newMsg.message = update.extraFields!!.text
+                        newMsg.from_id = TLRPC.TL_peerUser().apply { user_id = from_id }
+                        newMsg.peer_id = if (isChat) TLRPC.TL_peerChat().apply { chat_id = peerId }
+                        else TLRPC.TL_peerUser().apply { user_id = peerId }
+                        newMsg.id = update.message_id
+                        newMsg.dialog_id = if (isChat) -peerId else peerId
+                        newMsg.unread = (newMsg.flags and 1) != 0
+                        newMsg.flags = newMsg.flags or 256
+
+                        AndroidUtilities.runOnUIThread {
+                            messagesController.updateInterfaceWithVKMessages(
+                                newMsg.dialog_id,
+                                arrayListOf(MessageObject(currentAccount, newMsg, false, false))
+                            )
+                            notificationCenter.postNotificationName(NotificationCenter.dialogsNeedReload)
+                        }
+
+                        messagesStorage.putMessages(
+                            arrayListOf(newMsg),
+                            false,
+                            true,
+                            false,
+                            0,
+                            false
+                        )
+                    }
+                }
+            }
+            if (missingData) {
+                //TODO: get diff
+            }
+            messagesStorage.vkLastTs = updates.ts
+        }
+    }
+
+    fun getHistoryDiff(
+        newPts: Int,
+        onComplete: ((success: Boolean) -> Unit)? = null
+    ) {
+        val limit = if (ApplicationLoader.isConnectedOrConnectingToWiFi()) 3000 else 700
+        if (newPts - messagesStorage.vkLastPts > limit) {
+            //TODO: RESET
+        } else {
+            VK.execute(MessagesService().messagesGetLongPollHistory(
+                ts = messagesStorage.vkLastTs,
+                pts = messagesStorage.vkLastPts,
+                maxMsgId = if (messagesStorage.vkLastMaxMsgId != 0) messagesStorage.vkLastMaxMsgId else null,
+                lpVersion = 3,
+                extended = true
+            ),
+                object : VKApiCallback<MessagesGetLongPollHistoryResponse?> {
+                    override fun success(result: MessagesGetLongPollHistoryResponse?) {
+                        if (result == null) onComplete?.invoke(false)
+                        val usersArray = arrayListOf<TLRPC.User>()
+                        val usersDict = LongSparseArray<TLRPC.User>()
+                        val chatsArray = arrayListOf<TLRPC.Chat>()
+                        val chatsDict = LongSparseArray<TLRPC.Chat>()
+                        for (a in result!!.profiles!!)
+                            DTOConverters.VKUserConverter(a).apply {
+                                usersArray.add(this)
+                                usersDict.put(a.id.value, this)
+                            }
+                        for (a in result.chats!!)
+                            DTOConverters.VKConversationConverter(a).apply {
+                                chatsDict.put(a.id.toLong(), this)
+                                chatsArray.add(this)
+                            }
+
+                        messagesStorage.storageQueue.postRunnable {
+                            messagesStorage.putUsersAndChats(usersArray, chatsArray, true, false)
+                            Utilities.stageQueue.postRunnable {
+                                if (result.messages?.items?.isEmpty() == false) {
+                                    val tg_msg = arrayListOf<TLRPC.Message>()
+                                    for (msg in result.messages!!.items!!)
+                                        tg_msg.add(DTOConverters.VKMessageConverter(msg))
+
+                                    val messages = LongSparseArray<ArrayList<MessageObject>>()
+                                    ImageLoader.saveMessagesThumbs(tg_msg)
+                                    val pushMessages = ArrayList<MessageObject>()
+                                    val clientUserId = userConfig.getClientUserId()
+                                    for (a in tg_msg.indices) {
+                                        val message: TLRPC.Message = tg_msg.get(a)
+                                        if (message is TLRPC.TL_messageEmpty) {
+                                            continue
+                                        }
+                                        MessageObject.getDialogId(message)
+                                        if (!DialogObject.isEncryptedDialog(message.dialog_id)) {
+                                            if (message.action is TLRPC.TL_messageActionChatDeleteUser) {
+                                                val user = usersDict[message.action.user_id]
+                                                if (user != null && user.bot) {
+                                                    message.reply_markup =
+                                                        TLRPC.TL_replyKeyboardHide()
+                                                    message.flags = message.flags or 64
+                                                }
+                                            }
+                                            if (message.action is TLRPC.TL_messageActionChatMigrateTo || message.action is TLRPC.TL_messageActionChannelCreate) {
+                                                message.unread = false
+                                                message.media_unread = false
+                                            } else {
+                                                val read_max: ConcurrentHashMap<Long, Int> =
+                                                    if (message.out) messagesController.dialogs_read_outbox_max else messagesController.dialogs_read_inbox_max
+                                                var value = read_max[message.dialog_id]
+                                                if (value == null) {
+                                                    value = messagesStorage.getDialogReadMax(
+                                                        message.out,
+                                                        message.dialog_id
+                                                    )
+                                                    read_max[message.dialog_id] = value
+                                                }
+                                                message.unread = value < message.id
+                                            }
+                                        }
+                                        if (message.dialog_id == clientUserId) {
+                                            message.unread = false
+                                            message.media_unread = false
+                                            message.out = true
+                                        }
+                                        val isDialogCreated: Boolean =
+                                            messagesController.createdDialogIds.contains(message.dialog_id)
+                                        val obj = MessageObject(
+                                            currentAccount,
+                                            message,
+                                            usersDict,
+                                            chatsDict,
+                                            isDialogCreated,
+                                            isDialogCreated
+                                        )
+                                        if ((!obj.isOut || obj.messageOwner.from_scheduled) && obj.isUnread) {
+                                            pushMessages.add(obj)
+                                        }
+                                        var arr = messages[message.dialog_id]
+                                        if (arr == null) {
+                                            arr = ArrayList()
+                                            messages.put(message.dialog_id, arr)
+                                        }
+                                        arr.add(obj)
+                                    }
+                                    AndroidUtilities.runOnUIThread {
+                                        for (a in 0 until messages.size()) {
+                                            val key = messages.keyAt(a)
+                                            val value = messages.valueAt(a)
+                                            messagesController.updateInterfaceWithVKMessages(
+                                                key,
+                                                value
+                                            )
+                                        }
+                                        notificationCenter.postNotificationName(NotificationCenter.dialogsNeedReload)
+                                    }
+                                }
+                            }
+                        }
+                        onComplete?.invoke(true)
+                    }
+
+                    override fun fail(e: Exception) {
+                        onComplete?.invoke(false)
+                    }
+                })
+        }
     }
 
     companion object {
