@@ -19907,6 +19907,7 @@ public class TLRPC {
             scam = (flags & 16777216) != 0;
             apply_min_photo = (flags & 33554432) != 0;
             fake = (flags & 67108864) != 0;
+            isVK = (flags & 134217728) != 0;
             id = stream.readInt64(exception);
             if ((flags & 1) != 0) {
                 access_hash = stream.readInt64(exception);
@@ -19974,6 +19975,7 @@ public class TLRPC {
             flags = scam ? (flags | 16777216) : (flags &~ 16777216);
             flags = apply_min_photo ? (flags | 33554432) : (flags &~ 33554432);
             flags = fake ? (flags | 67108864) : (flags &~ 67108864);
+            flags = isVK ? (flags | 134217728) : (flags &~ 134217728);
             stream.writeInt32(flags);
             stream.writeInt64(id);
             if ((flags & 1) != 0) {
@@ -38433,6 +38435,7 @@ public class TLRPC {
             call_active = (flags & 8388608) != 0;
             call_not_empty = (flags & 16777216) != 0;
             noforwards = (flags & 33554432) != 0;
+            isVK = (flags & 134217728) != 0;
             id = stream.readInt64(exception);
             title = stream.readString(exception);
             photo = ChatPhoto.TLdeserialize(stream, stream.readInt32(exception), exception);
@@ -38459,6 +38462,7 @@ public class TLRPC {
             flags = call_active ? (flags | 8388608) : (flags &~ 8388608);
             flags = call_not_empty ? (flags | 16777216) : (flags &~ 16777216);
             flags = noforwards ? (flags | 33554432) : (flags &~ 33554432);
+            flags = isVK ? (flags | 134217728) : (flags &~ 134217728);
             stream.writeInt32(flags);
             stream.writeInt64(id);
             stream.writeString(title);
@@ -54472,6 +54476,7 @@ public class TLRPC {
             edit_hide = (flags & 2097152) != 0;
             pinned = (flags & 16777216) != 0;
             noforwards = (flags & 67108864) != 0;
+            isVK = (flags & 134217728) != 0;
             id = stream.readInt32(exception);
             if ((flags & 256) != 0) {
                 from_id = Peer.TLdeserialize(stream, stream.readInt32(exception), exception);
@@ -54572,6 +54577,7 @@ public class TLRPC {
             flags = edit_hide ? (flags | 2097152) : (flags &~ 2097152);
             flags = pinned ? (flags | 16777216) : (flags &~ 16777216);
             flags = noforwards ? (flags | 67108864) : (flags &~ 67108864);
+            flags = isVK ? (flags | 134217728) : (flags &~ 134217728);
             stream.writeInt32(flags);
             stream.writeInt32(id);
             if ((flags & 256) != 0) {
