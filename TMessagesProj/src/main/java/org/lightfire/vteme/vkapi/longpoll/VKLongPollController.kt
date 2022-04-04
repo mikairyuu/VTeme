@@ -11,6 +11,8 @@ import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import okhttp3.*
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.DTO.LPServerResponseWrapper
+import org.lightfire.vteme.vkapi.longpoll.DTO.MessageFlagsChanged
+import org.lightfire.vteme.vkapi.longpoll.DTO.MessageFlagsSet
 import org.lightfire.vteme.vkapi.longpoll.DTO.NewMessageAdded
 import org.telegram.messenger.*
 import org.telegram.tgnet.TLRPC
@@ -101,9 +103,15 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
         if (updates.ts == -1) {
             initLongPoll(true)
         } else {
+            val time = connectionsManager.currentTime
+            val updatesRest = arrayListOf<TLRPC.Update>()
             var missingData = false
             outer@ for (update in updates.updates) {
                 when (update) {
+                    is MessageFlagsSet -> {
+                        if ((update.mask and 128) != 0) updatesRest.add(TLRPC.TL_updateDeleteMessages()
+                            .apply { messages.add(update.message_id) })
+                    }
                     is NewMessageAdded -> {
                         if (update.extraFields == null) return
                         val newMsg = DTOConverters.makeVk(TLRPC.TL_message())
@@ -149,6 +157,14 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     }
                 }
             }
+            if (!missingData && updatesRest.isNotEmpty()) missingData =
+                missingData or messagesController.processUpdateArray(
+                    updatesRest,
+                    null,
+                    null,
+                    false,
+                    time
+                )
             if (missingData) {
                 //TODO: get diff
             }
