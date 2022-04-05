@@ -54,7 +54,9 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     if (messagesStorage.vkLastTs == result.ts) {
                         if (onSuccessInit) startPolling()
                     } else {
+                        connectionsManager.setIsUpdating(true)
                         getHistoryDiff(result.pts!!) {
+                            connectionsManager.setIsUpdating(false)
                             if (it) {
                                 startPolling()
                             }
