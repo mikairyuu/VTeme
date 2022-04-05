@@ -1,8 +1,6 @@
 package org.lightfire.vteme.vkapi.longpoll
 
-import android.widget.Toast
 import androidx.collection.LongSparseArray
-import com.google.android.exoplayer2.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.vk.api.sdk.VK
@@ -58,6 +56,11 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         getHistoryDiff(result.pts!!) {
                             connectionsManager.setIsUpdating(false)
                             if (it) {
+                                messagesStorage.saveVKDiffParams(
+                                    result.ts,
+                                    result.pts!!,
+                                    messagesStorage.vkLastMaxMsgId
+                                )
                                 startPolling()
                             }
                         }
@@ -190,7 +193,6 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                 ts = messagesStorage.vkLastTs,
                 pts = messagesStorage.vkLastPts,
                 maxMsgId = if (messagesStorage.vkLastMaxMsgId != 0) messagesStorage.vkLastMaxMsgId else null,
-                credentials = true,
                 lpVersion = 3,
                 extended = true
             ),
@@ -209,11 +211,17 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                 }
                         if (result.conversations != null)
                             for (a in result.conversations!!) {
-                            if (a.peer.type.value == "chat") {
-                                val convRes = DTOConverters.VKConversationConverter(a).second
-                                chatsDict.put(convRes.id, convRes)
-                                chatsArray.add(convRes)
+                                if (a.peer.type.value == "chat") {
+                                    val convRes = DTOConverters.VKConversationConverter(a).second
+                                    chatsDict.put(convRes.id, convRes)
+                                    chatsArray.add(convRes)
+                                }
                             }
+
+                        AndroidUtilities.runOnUIThread {
+                            messagesController.clearFullUsers()
+                            messagesController.putUsers(usersArray, false)
+                            messagesController.putChats(chatsArray, false)
                         }
 
                         messagesStorage.storageQueue.postRunnable {
@@ -234,32 +242,31 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                             continue
                                         }
                                         MessageObject.getDialogId(message)
-                                        if (!DialogObject.isEncryptedDialog(message.dialog_id)) {
-                                            if (message.action is TLRPC.TL_messageActionChatDeleteUser) {
-                                                val user = usersDict[message.action.user_id]
-                                                if (user != null && user.bot) {
-                                                    message.reply_markup =
-                                                        TLRPC.TL_replyKeyboardHide()
-                                                    message.flags = message.flags or 64
-                                                }
-                                            }
-                                            if (message.action is TLRPC.TL_messageActionChatMigrateTo || message.action is TLRPC.TL_messageActionChannelCreate) {
-                                                message.unread = false
-                                                message.media_unread = false
-                                            } else {
-                                                val read_max: ConcurrentHashMap<Long, Int> =
-                                                    if (message.out) messagesController.dialogs_read_outbox_max else messagesController.dialogs_read_inbox_max
-                                                var value = read_max[message.dialog_id]
-                                                if (value == null) {
-                                                    value = messagesStorage.getDialogReadMax(
-                                                        message.out,
-                                                        message.dialog_id
-                                                    )
-                                                    read_max[message.dialog_id] = value
-                                                }
-                                                message.unread = value < message.id
+                                        if (message.action is TLRPC.TL_messageActionChatDeleteUser) {
+                                            val user = usersDict[message.action.user_id]
+                                            if (user != null && user.bot) {
+                                                message.reply_markup =
+                                                    TLRPC.TL_replyKeyboardHide()
+                                                message.flags = message.flags or 64
                                             }
                                         }
+                                        if (message.action is TLRPC.TL_messageActionChatMigrateTo || message.action is TLRPC.TL_messageActionChannelCreate) {
+                                            message.unread = false
+                                            message.media_unread = false
+                                        } else {
+                                            val read_max: ConcurrentHashMap<Long, Int> =
+                                                if (message.out) messagesController.dialogs_read_outbox_max else messagesController.dialogs_read_inbox_max
+                                            var value = read_max[message.dialog_id]
+                                            if (value == null) {
+                                                value = messagesStorage.getDialogReadMax(
+                                                    message.out,
+                                                    message.dialog_id
+                                                )
+                                                read_max[message.dialog_id] = value
+                                            }
+                                            message.unread = value < message.id
+                                        }
+
                                         if (message.dialog_id == clientUserId) {
                                             message.unread = false
                                             message.media_unread = false
@@ -296,14 +303,19 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                         }
                                         notificationCenter.postNotificationName(NotificationCenter.dialogsNeedReload)
                                     }
+                                    messagesStorage.storageQueue.postRunnable {
+                                        messagesStorage.putMessages(
+                                            tg_msg,
+                                            true,
+                                            false,
+                                            false,
+                                            downloadController.autodownloadMask,
+                                            false
+                                        )
+                                    }
                                 }
                             }
                         }
-                        messagesStorage.saveVKDiffParams(
-                            result.credentials!!.ts,
-                            result.credentials!!.pts!!,
-                            messagesStorage.vkLastMaxMsgId
-                        )
                         onComplete?.invoke(true)
                     }
 

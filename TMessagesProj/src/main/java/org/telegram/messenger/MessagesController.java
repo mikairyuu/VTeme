@@ -3295,7 +3295,7 @@ public class MessagesController extends BaseController implements NotificationCe
         loadingFullChats.remove(chatId);
     }
 
-    protected void clearFullUsers() {
+    public void clearFullUsers() {
         loadedFullUsers.clear();
         loadedFullChats.clear();
     }
