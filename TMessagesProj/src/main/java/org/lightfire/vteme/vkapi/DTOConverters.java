@@ -39,13 +39,10 @@ public class DTOConverters {
     }
 
     // Chat is nullable
-    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversationWithMessage conversationWithMessage) {
-        MessagesConversation conv = conversationWithMessage.getConversation();
+    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversation conv) {
         TLRPC.TL_dialog ret_dialog = makeVk(new TLRPC.TL_dialog());
         Pair<TLRPC.TL_dialog, TLRPC.TL_chat> retPair;
         ret_dialog.unread_count = conv.getUnreadCount() == null ? 0 : conv.getUnreadCount();
-        if (conversationWithMessage.getLastMessage() != null)
-            ret_dialog.last_message_date = conversationWithMessage.getLastMessage().getDate();
         ret_dialog.top_message = conv.getLastMessageId();
         ret_dialog.id = conv.getPeer().getId();
         ret_dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
@@ -72,7 +69,15 @@ public class DTOConverters {
         return retPair;
     }
 
-    public static TLRPC.TL_chat VKConversationConverter(MessagesChat conv){
+    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversationWithMessage conv) {
+        Pair<TLRPC.TL_dialog, TLRPC.TL_chat> resConv = DTOConverters.VKConversationConverter(conv.getConversation());
+        if (conv.getLastMessage() != null)
+            resConv.first.last_message_date = conv.getLastMessage().getDate();
+        return resConv;
+    }
+
+
+    public static TLRPC.TL_chat VKConversationConverter(MessagesChat conv) {
         TLRPC.TL_chat retChat = makeVk(new TLRPC.TL_chat());
         retChat.title = conv.getTitle();
         retChat.participants_count = conv.getMembersCount();

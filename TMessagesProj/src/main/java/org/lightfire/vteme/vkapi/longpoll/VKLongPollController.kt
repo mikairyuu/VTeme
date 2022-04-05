@@ -1,6 +1,8 @@
 package org.lightfire.vteme.vkapi.longpoll
 
+import android.widget.Toast
 import androidx.collection.LongSparseArray
+import com.google.android.exoplayer2.util.Log
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.vk.api.sdk.VK
@@ -11,7 +13,6 @@ import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import okhttp3.*
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.DTO.LPServerResponseWrapper
-import org.lightfire.vteme.vkapi.longpoll.DTO.MessageFlagsChanged
 import org.lightfire.vteme.vkapi.longpoll.DTO.MessageFlagsSet
 import org.lightfire.vteme.vkapi.longpoll.DTO.NewMessageAdded
 import org.telegram.messenger.*
@@ -24,8 +25,6 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     var cache: MessagesGetLongPollHistoryResponse? = null
     private var vkKey: String? = null
     private var vkServer: String? = null
-
-    private var firstDiff = true
 
     private val okhttpClient: OkHttpClient by lazy { OkHttpClient() }
     private val gson: Gson
@@ -46,22 +45,17 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     vkServer = result.server
                     vkKey = result.key
                     if (firstTime) {
-                        messagesStorage.vkLastTs = result.ts
-                        messagesStorage.vkLastPts = result.pts!!
                         messagesStorage.saveVKDiffParams(
                             result.ts,
                             result.pts!!,
                             messagesStorage.vkLastMaxMsgId
                         )
                     }
-                    if (firstDiff && messagesStorage.vkLastTs == result.ts)
-                        firstDiff = false
-                    if (!firstDiff) {
+                    if (messagesStorage.vkLastTs == result.ts) {
                         if (onSuccessInit) startPolling()
                     } else {
                         getHistoryDiff(result.pts!!) {
                             if (it) {
-                                //getMessagesStorage().saveVKDiffParams(messagesLongpollParams.getTs(),messagesLongpollParams.getPts());
                                 startPolling()
                             }
                         }
@@ -171,24 +165,30 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     time
                 )
             if (missingData) {
-                //TODO: get diff
+                getHistoryDiff(updates.pts)
+            } else {
+                messagesStorage.saveVKDiffParams(
+                    updates.ts,
+                    updates.pts,
+                    messagesStorage.vkLastMaxMsgId
+                )
             }
-            messagesStorage.vkLastTs = updates.ts
         }
     }
 
     fun getHistoryDiff(
-        newPts: Int,
+        newPts: Int = 0,
         onComplete: ((success: Boolean) -> Unit)? = null
     ) {
         val limit = if (ApplicationLoader.isConnectedOrConnectingToWiFi()) 3000 else 700
-        if (newPts - messagesStorage.vkLastPts > limit) {
+        if (newPts - messagesStorage.vkLastPts > limit && newPts != 0) {
             //TODO: RESET
         } else {
             VK.execute(MessagesService().messagesGetLongPollHistory(
                 ts = messagesStorage.vkLastTs,
                 pts = messagesStorage.vkLastPts,
                 maxMsgId = if (messagesStorage.vkLastMaxMsgId != 0) messagesStorage.vkLastMaxMsgId else null,
+                credentials = true,
                 lpVersion = 3,
                 extended = true
             ),
@@ -199,16 +199,20 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         val usersDict = LongSparseArray<TLRPC.User>()
                         val chatsArray = arrayListOf<TLRPC.Chat>()
                         val chatsDict = LongSparseArray<TLRPC.Chat>()
-                        for (a in result!!.profiles!!)
-                            DTOConverters.VKUserConverter(a).apply {
-                                usersArray.add(this)
-                                usersDict.put(a.id.value, this)
+                        if (result!!.profiles != null)
+                            for (a in result.profiles!!)
+                                DTOConverters.VKUserConverter(a).apply {
+                                    usersArray.add(this)
+                                    usersDict.put(a.id.value, this)
+                                }
+                        if (result.conversations != null)
+                            for (a in result.conversations!!) {
+                            if (a.peer.type.value == "chat") {
+                                val convRes = DTOConverters.VKConversationConverter(a).second
+                                chatsDict.put(convRes.id, convRes)
+                                chatsArray.add(convRes)
                             }
-                        for (a in result.chats!!)
-                            DTOConverters.VKConversationConverter(a).apply {
-                                chatsDict.put(a.id.toLong(), this)
-                                chatsArray.add(this)
-                            }
+                        }
 
                         messagesStorage.storageQueue.postRunnable {
                             messagesStorage.putUsersAndChats(usersArray, chatsArray, true, false)
@@ -293,6 +297,11 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                 }
                             }
                         }
+                        messagesStorage.saveVKDiffParams(
+                            result.credentials!!.ts,
+                            result.credentials!!.pts!!,
+                            messagesStorage.vkLastMaxMsgId
+                        )
                         onComplete?.invoke(true)
                     }
 
