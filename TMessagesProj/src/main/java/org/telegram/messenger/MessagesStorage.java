@@ -75,10 +75,6 @@ public class MessagesStorage extends BaseController {
     private int lastSavedDate = 0;
     private int lastSavedQts = 0;
 
-    private int vkLastSavedTs = 0;
-    private int vkLastSavedPts = 0;
-    private int vkSavedMaxMsgId = 0;
-
     private ArrayList<MessagesController.DialogFilter> dialogFilters = new ArrayList<>();
     private SparseArray<MessagesController.DialogFilter> dialogFiltersMap = new SparseArray<>();
     private LongSparseArray<Boolean> unknownDialogsIds = new LongSparseArray<>();
@@ -2048,18 +2044,15 @@ public class MessagesStorage extends BaseController {
 
     private void saveVKDiffParamsInternal(int ts, int pts, int max_msg_id) {
         try {
-            if (vkLastSavedTs == ts && vkLastSavedPts == pts) {
-                return;
-            }
-            SQLitePreparedStatement state = database.executeFast("UPDATE params SET ts = ?, pts = ?, max_msg_id = ? WHERE id = 1");
+            SQLitePreparedStatement state = database.executeFast("UPDATE vkparams SET ts = ?, pts = ?, max_msg_id = ? WHERE id = 1");
             state.bindInteger(1, ts);
             state.bindInteger(2, pts);
             state.bindInteger(3, max_msg_id);
             state.step();
             state.dispose();
-            vkLastSavedTs = ts;
-            vkLastSavedPts = pts;
-            vkSavedMaxMsgId = max_msg_id;
+            vkLastTs = ts;
+            vkLastPts = pts;
+            vkLastMaxMsgId = max_msg_id;
         } catch (Exception e) {
             FileLog.e(e);
         }
