@@ -19,7 +19,7 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
         if (obj.has("failed")) {
             updateList.add(obj.get("failed").asInt)
             if (obj.has("ts")) updateList.add(obj.get("ts").asInt)
-            return LPServerResponseWrapper(-1, updateList)
+            return LPServerResponseWrapper(-1, -1, updateList)
         }
         for (elem in obj.getAsJsonArray("updates")) {
             val curArray = elem.asJsonArray
@@ -181,7 +181,7 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
 
             }
         }
-        return LPServerResponseWrapper(obj.get("ts").asInt, updateList)
+        return LPServerResponseWrapper(obj.get("ts").asInt, obj.get("pts").asInt, updateList)
     }
 
     private fun parseMessageExtraFields(startIndex: Int, array: JsonArray): MessageExtraFields? {

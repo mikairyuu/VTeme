@@ -2,6 +2,7 @@ package org.lightfire.vteme.vkapi.longpoll.DTO
 
 data class LPServerResponseWrapper(
     var ts: Int,
+    var pts: Int,
     var updates : List<Any>
 )
 
