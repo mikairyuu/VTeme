@@ -75,6 +75,7 @@ public class DTOConverters {
         retUser.id = user.getId().getValue();
         retUser.first_name = user.getFirstName();
         retUser.last_name = user.getLastName();
+        retUser.flags = retUser.flags | 6;
         retUser.photo = new TLRPC.TL_userProfilePhotoEmpty();
         if (VK.getUserId() == user.getId()) retUser.self = true;
         return retUser;
