@@ -27,7 +27,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
 
     private var firstDiff = true
 
-    private val okhttpClient: OkHttpClient = OkHttpClient()
+    private val okhttpClient: OkHttpClient by lazy { OkHttpClient() }
     private val gson: Gson
 
     init {
@@ -37,6 +37,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     }
 
     fun initLongPoll(onSuccessInit: Boolean = false, firstTime: Boolean = false) {
+        if (VK.getUserId().value == 0L) return
         VK.execute(
             MessagesService().messagesGetLongPollServer(true, null, 3),
             object : VKApiCallback<MessagesLongpollParams?> {
@@ -45,9 +46,13 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     vkServer = result.server
                     vkKey = result.key
                     if (firstTime) {
-                        //TODO: Save
                         messagesStorage.vkLastTs = result.ts
                         messagesStorage.vkLastPts = result.pts!!
+                        messagesStorage.saveVKDiffParams(
+                            result.ts,
+                            result.pts!!,
+                            messagesStorage.vkLastMaxMsgId
+                        )
                     }
                     if (firstDiff && messagesStorage.vkLastTs == result.ts)
                         firstDiff = false
