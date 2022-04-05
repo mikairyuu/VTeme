@@ -64,7 +64,7 @@ public class DTOConverters {
             ret_dialog.id = -ret_dialog.id;
             retChat.id = conv.getPeer().getId();
             retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
-            retChat.version = 0;
+            retChat.photo = new TLRPC.TL_chatPhotoEmpty();
             retPair = new Pair<>(ret_dialog, retChat);
         } else {
             retPair = new Pair<>(ret_dialog, null);
@@ -87,6 +87,8 @@ public class DTOConverters {
         retUser.id = user.getId().getValue();
         retUser.first_name = user.getFirstName();
         retUser.last_name = user.getLastName();
+        retUser.flags = retUser.flags | 6;
+        retUser.photo = new TLRPC.TL_userProfilePhotoEmpty();
         if (VK.getUserId() == user.getId()) retUser.self = true;
         return retUser;
     }

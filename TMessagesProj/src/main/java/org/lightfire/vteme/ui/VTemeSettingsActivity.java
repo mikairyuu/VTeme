@@ -34,6 +34,7 @@ import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
 import org.lightfire.vteme.VTemeConfig;
+import org.lightfire.vteme.utils.UIUtil;
 import org.lightfire.vteme.vkapi.DTOConverters;
 import org.lightfire.vteme.vkapi.longpoll.VKLongPollController;
 import org.telegram.messenger.LocaleController;
@@ -135,8 +136,13 @@ public class VTemeSettingsActivity extends BaseFragment {
             @Override
             public void success(MessagesGetConversationsResponse vkMsg) {
                 if (vkMsg != null) {
-                    getMessagesController().processDialogsUpdate(DTOConverters.VKDialogsConverter(vkMsg), null, false);
-                    VKLongPollController.Companion.getInstance(0).initLongPoll(true, true);
+                    UIUtil.runOnIoDispatcher(()->{
+                        TLRPC.messages_Dialogs convRes = DTOConverters.VKDialogsConverter(vkMsg);
+                        getMessagesStorage().putMessages(convRes.messages, false, false, false, 0, false);
+                        getMessagesStorage().putUsersAndChats(convRes.users, convRes.chats, false, false);
+                        getMessagesController().processDialogsUpdate(convRes, null, false);
+                        VKLongPollController.Companion.getInstance(0).initLongPoll(true, true);
+                    });
                 }
             }
 
