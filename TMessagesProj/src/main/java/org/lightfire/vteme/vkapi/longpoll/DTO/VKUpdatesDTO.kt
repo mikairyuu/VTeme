@@ -41,7 +41,6 @@ data class MessageFlagsReset(
 data class NewMessageAdded(
     var message_id: Int,
     var flags: Int,
-    var minor_id: Int,
     var extraFields: MessageExtraFields?
 )
 // 5
@@ -50,8 +49,8 @@ data class MessageEdited(
     var mask: Int,
     var peer_id: Int,
     var timestamp: Int,
-    var new_text: String,
-    var attachments : Any? = null,
+    var new_text: String?,
+    var attachments: Any? = null,
 )
 // 6
 data class MessagesReadInbox(

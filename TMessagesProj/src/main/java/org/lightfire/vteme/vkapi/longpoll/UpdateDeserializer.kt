@@ -1,159 +1,150 @@
 package org.lightfire.vteme.vkapi.longpoll
 
-import com.google.gson.JsonArray
-import com.google.gson.JsonDeserializationContext
-import com.google.gson.JsonDeserializer
-import com.google.gson.JsonElement
+import com.google.gson.*
 import org.lightfire.vteme.vkapi.longpoll.DTO.*
 import java.lang.reflect.Type
 
-class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
+object UpdateDeserializeUtils {
+    private fun Iterable<*>.getInt(index: Int, jsonMode: Boolean): Int {
+        return if (jsonMode) (this as JsonArray)[index].asInt else (this as List<Int>)[index]
+    }
 
-    override fun deserialize(
-        json: JsonElement?,
-        typeOfT: Type?,
-        context: JsonDeserializationContext?
-    ): LPServerResponseWrapper {
-        val obj = json!!.asJsonObject
-        val updateList: MutableList<Any> = mutableListOf()
-        if (obj.has("failed")) {
-            updateList.add(obj.get("failed").asInt)
-            if (obj.has("ts")) updateList.add(obj.get("ts").asInt)
-            return LPServerResponseWrapper(-1, -1, updateList)
-        }
-        for (elem in obj.getAsJsonArray("updates")) {
-            val curArray = elem.asJsonArray
-            when (curArray[0].asInt) {
+    //Any represents List<List<int>> or JSONArray
+    fun decode(updates: Iterable<Any>): List<Any> {
+        val jsonMode = updates is JsonArray
+        val updateList = mutableListOf<Any>()
+        for (elem in updates) {
+            val array = if (jsonMode) (elem as JsonArray) else elem as List<Int>
+            when (array.getInt(0, jsonMode)) {
                 1 -> updateList.add(
                     MessageFlagsChanged(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        parseMessageExtraFields(3, curArray)
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        if (jsonMode) parseMessageExtraFields(3, array as JsonArray) else null
                     )
                 )
                 2 -> updateList.add(
                     MessageFlagsSet(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        parseMessageExtraFields(3, curArray)
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        if (jsonMode) parseMessageExtraFields(3, array as JsonArray) else null
                     )
                 )
                 3 -> updateList.add(
                     MessageFlagsReset(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        parseMessageExtraFields(3, curArray)
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        if (jsonMode) parseMessageExtraFields(3, array as JsonArray) else null
                     )
                 )
                 4 -> updateList.add(
                     NewMessageAdded(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        curArray[3].asInt,
-                        parseMessageExtraFields(3, curArray)
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        if (jsonMode) parseMessageExtraFields(3, array as JsonArray) else null
                     )
                 )
                 5 -> updateList.add(
                     MessageEdited(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        curArray[3].asInt,
-                        curArray[4].asInt,
-                        curArray[5].asString,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        array.getInt(3, jsonMode),
+                        array.getInt(4, jsonMode),
+                        if (jsonMode) (array as JsonArray)[5].asString else null,
                         null
                     )
                 )
                 6 -> updateList.add(
                     MessagesReadInbox(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 7 -> updateList.add(
                     MessagesReadOutbox(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 8 -> updateList.add(
                     UserWentOnline(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        curArray[3].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        array.getInt(3, jsonMode),
                     )
                 )
                 9 -> updateList.add(
                     UserWentOffline(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        curArray[3].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        array.getInt(3, jsonMode),
                     )
                 )
                 10 -> updateList.add(
                     DialogFlagsReset(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 11 -> updateList.add(
                     DialogFlagsChanged(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 12 -> updateList.add(
                     DialogFlagsSet(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 13 -> updateList.add(
                     MessagesDeleted(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 14 -> updateList.add(
                     MessagesRestored(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 20 -> updateList.add(
                     PeerMajorIDChanged(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 21 -> updateList.add(
                     PeerMinorIDChanged(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 51 -> updateList.add(
                     ChatParametersChanged(
-                        curArray[1].asInt,
-                        if (curArray.size() > 2) 1 else 0
+                        array.getInt(1, jsonMode),
+                        if (jsonMode) if ((array as JsonArray).size() > 2) 1 else 0 else if ((array as List<Int>).size > 2) 1 else 0
                     )
                 )
                 52 -> updateList.add(
                     ChatInfoChanged(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
-                        curArray[3].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
+                        array.getInt(3, jsonMode),
                     )
                 )
                 61 -> updateList.add(
                     UserTypesTextDialog(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 62 -> updateList.add(
                     UserTypesTextChat(
-                        curArray[1].asInt,
-                        curArray[2].asInt,
+                        array.getInt(1, jsonMode),
+                        array.getInt(2, jsonMode),
                     )
                 )
                 63 -> {//TODO: check the signature
@@ -163,8 +154,8 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
                 70 -> {
                     updateList.add(
                         UserMadeCall(
-                            curArray[1].asInt,
-                            curArray[2].asInt,
+                            array.getInt(1, jsonMode),
+                            array.getInt(2, jsonMode),
                         )
                     )
                 }
@@ -172,16 +163,16 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
                 114 -> {
                     updateList.add(
                         PushSettingsChanged(
-                            curArray[1].asInt,
-                            curArray[2].asInt,
-                            curArray[3].asInt,
+                            array.getInt(1, jsonMode),
+                            array.getInt(2, jsonMode),
+                            array.getInt(3, jsonMode),
                         )
                     )
                 }
 
             }
         }
-        return LPServerResponseWrapper(obj.get("ts").asInt, obj.get("pts").asInt, updateList)
+        return updateList
     }
 
     private fun parseMessageExtraFields(startIndex: Int, array: JsonArray): MessageExtraFields? {
@@ -208,5 +199,24 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
         } else {
             return null
         }
+    }
+}
+
+class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
+
+    override fun deserialize(
+        json: JsonElement?,
+        typeOfT: Type?,
+        context: JsonDeserializationContext?
+    ): LPServerResponseWrapper {
+        val obj = json!!.asJsonObject
+        val updateList: MutableList<Any> = mutableListOf()
+        if (obj.has("failed")) {
+            updateList.add(obj.get("failed").asInt)
+            if (obj.has("ts")) updateList.add(obj.get("ts").asInt)
+            return LPServerResponseWrapper(-1, -1, updateList)
+        }
+
+        return LPServerResponseWrapper(obj.get("ts").asInt, obj.get("pts").asInt, UpdateDeserializeUtils.decode(obj.getAsJsonArray("updates")))
     }
 }
