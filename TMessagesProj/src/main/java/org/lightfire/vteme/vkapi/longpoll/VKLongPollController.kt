@@ -1,6 +1,8 @@
 package org.lightfire.vteme.vkapi.longpoll
 
 import androidx.collection.LongSparseArray
+import com.google.android.exoplayer2.util.Log
+import com.google.android.exoplayer2.util.SystemClock
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.vk.api.sdk.VK
@@ -103,6 +105,16 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
         okhttpClient.dispatcher.idleCallback = null
     }
 
+    private fun convertMiscUpdate(update: Any): TLRPC.Update? {
+        when (update) {
+            is MessageFlagsSet -> {
+                if ((update.mask and 128) != 0) return TLRPC.TL_updateDeleteMessages()
+                    .apply { messages.add(update.message_id) }
+            }
+        }
+        return null
+    }
+
     private fun processLPResult(updates: LPServerResponseWrapper) {
         if (updates.ts == -1) {
             initLongPoll(true)
@@ -112,10 +124,6 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
             var missingData = false
             outer@ for (update in updates.updates) {
                 when (update) {
-                    is MessageFlagsSet -> {
-                        if ((update.mask and 128) != 0) updatesRest.add(TLRPC.TL_updateDeleteMessages()
-                            .apply { messages.add(update.message_id) })
-                    }
                     is NewMessageAdded -> {
                         if (update.extraFields == null) return
                         val newMsg = DTOConverters.makeVk(TLRPC.TL_message())
@@ -160,9 +168,11 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         )
                     }
                 }
+                val miscUpdate = convertMiscUpdate(update)
+                if (miscUpdate != null) updatesRest.add(miscUpdate)
             }
             if (!missingData && updatesRest.isNotEmpty()) missingData =
-                missingData or messagesController.processUpdateArray(
+                missingData or !messagesController.processUpdateArray(
                     updatesRest,
                     null,
                     null,
@@ -170,7 +180,17 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     time
                 )
             if (missingData) {
-                getHistoryDiff(updates.pts)
+                stopPolling()
+                getHistoryDiff(updates.pts) {
+                    if (it) {
+                        messagesStorage.saveVKDiffParams(
+                            updates.ts,
+                            updates.pts,
+                            messagesStorage.vkLastMaxMsgId
+                        )
+                        startPolling()
+                    }
+                }
             } else {
                 messagesStorage.saveVKDiffParams(
                     updates.ts,
@@ -230,7 +250,9 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                 if (result.messages?.items?.isEmpty() == false) {
                                     val tg_msg = arrayListOf<TLRPC.Message>()
                                     for (msg in result.messages!!.items!!)
-                                        tg_msg.add(DTOConverters.VKMessageConverter(msg))
+                                        if (msg.deleted?.value != 1) tg_msg.add(
+                                            DTOConverters.VKMessageConverter(msg)
+                                        )
 
                                     val messages = LongSparseArray<ArrayList<MessageObject>>()
                                     ImageLoader.saveMessagesThumbs(tg_msg)
@@ -314,9 +336,27 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                         )
                                     }
                                 }
+                                if (result.history?.isEmpty() == false) {
+                                    val updatesArray =
+                                        UpdateDeserializeUtils.decode(result.history!!)
+                                    val tgUpdatesArray = arrayListOf<TLRPC.Update>()
+                                    for (update in updatesArray) {
+                                        val convRes = convertMiscUpdate(update)
+                                        if (convRes != null) tgUpdatesArray.add(convRes)
+                                    }
+                                    if (tgUpdatesArray.isNotEmpty()) {
+                                        messagesController.processUpdateArray(
+                                            tgUpdatesArray,
+                                            null,
+                                            null,
+                                            true,
+                                            connectionsManager.currentTime
+                                        )
+                                    }
+                                }
+                                onComplete?.invoke(true)
                             }
                         }
-                        onComplete?.invoke(true)
                     }
 
                     override fun fail(e: Exception) {
