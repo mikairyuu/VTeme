@@ -22,7 +22,7 @@ public class DTOConverters {
         resMsg.message = message.getText();
         resMsg.date = message.getDate();
         resMsg.out = message.getOut().getValue() == 1;
-        resMsg.id = message.getConversationMessageId();
+        resMsg.id = message.getId();
         resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
         resMsg.flags = resMsg.flags | 256;
         resMsg.random_id = message.getRandomId();
