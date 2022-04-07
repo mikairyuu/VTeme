@@ -1,8 +1,6 @@
 package org.lightfire.vteme.vkapi.longpoll
 
 import androidx.collection.LongSparseArray
-import com.google.android.exoplayer2.util.Log
-import com.google.android.exoplayer2.util.SystemClock
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.vk.api.sdk.VK
@@ -11,6 +9,7 @@ import com.vk.sdk.api.messages.MessagesService
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import okhttp3.*
+import org.lightfire.vteme.VTemeController
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.DTO.*
 import org.telegram.messenger.*
@@ -233,7 +232,9 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     ) {
         val limit = if (ApplicationLoader.isConnectedOrConnectingToWiFi()) 3000 else 700
         if (newPts - messagesStorage.vkLastPts > limit && newPts != 0) {
-            //TODO: RESET
+            VTemeController.getInstance(currentAccount)!!.loadVKMessages {
+                getInstance(0)!!.initLongPoll(true, true)
+            }
         } else {
             VK.execute(MessagesService().messagesGetLongPollHistory(
                 ts = messagesStorage.vkLastTs,

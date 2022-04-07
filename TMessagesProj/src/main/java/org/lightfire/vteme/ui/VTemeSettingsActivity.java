@@ -34,6 +34,7 @@ import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
 import org.lightfire.vteme.VTemeConfig;
+import org.lightfire.vteme.VTemeController;
 import org.lightfire.vteme.utils.UIUtil;
 import org.lightfire.vteme.vkapi.DTOConverters;
 import org.lightfire.vteme.vkapi.longpoll.VKLongPollController;
@@ -131,28 +132,6 @@ public class VTemeSettingsActivity extends BaseFragment {
         }
     }
 
-    private void loadVKMessages() {
-        VK.execute(new MessagesService().messagesGetConversations(null, 5, null, null, Arrays.asList(BaseUserGroupFields.ID, BaseUserGroupFields.NAME), null), new VKApiCallback<MessagesGetConversationsResponse>() {
-            @Override
-            public void success(MessagesGetConversationsResponse vkMsg) {
-                if (vkMsg != null) {
-                    UIUtil.runOnIoDispatcher(() -> {
-                        TLRPC.messages_Dialogs convRes = DTOConverters.VKDialogsConverter(vkMsg);
-                        getMessagesStorage().putDialogs(convRes, 0);
-                        getMessagesController().processDialogsUpdate(convRes, null, false);
-                        getMessagesController().applyDialogsNotificationsSettings(convRes.dialogs);
-                        VKLongPollController.Companion.getInstance(0).initLongPoll(true, true);
-                    });
-                }
-            }
-
-            @Override
-            public void fail(@NonNull Exception e) {
-
-            }
-        });
-    }
-
     @Override
     public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
         VKAuthCallback callback = new VKAuthCallback() {
@@ -160,13 +139,12 @@ public class VTemeSettingsActivity extends BaseFragment {
             @Override
             public void onLoginFailed(@NonNull VKAuthException e) {
                 Toast.makeText(getParentActivity(), "Ошибка входа...", Toast.LENGTH_LONG).show();
-                loadVKMessages(); //TEMP
             }
 
             @Override
             public void onLogin(@NonNull VKAccessToken vkAccessToken) {
                 VTemeConfig.setVKToken(vkAccessToken);
-                loadVKMessages();
+                VTemeController.Companion.getInstance(currentAccount).loadVKMessages(() -> VKLongPollController.Companion.getInstance(0).initLongPoll(true, true));
             }
         };
         VK.onActivityResult(requestCode, resultCode, data, callback);
