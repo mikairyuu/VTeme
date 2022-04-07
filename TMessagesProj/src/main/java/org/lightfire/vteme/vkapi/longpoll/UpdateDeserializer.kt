@@ -49,7 +49,7 @@ object UpdateDeserializeUtils {
                         array.getInt(1, jsonMode),
                         array.getInt(2, jsonMode),
                         array.getInt(3, jsonMode),
-                        array.getInt(4, jsonMode),
+                        if (jsonMode) array.getInt(4, jsonMode) else null,
                         if (jsonMode) (array as JsonArray)[5].asString else null,
                         null
                     )

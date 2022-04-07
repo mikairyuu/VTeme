@@ -48,7 +48,7 @@ data class MessageEdited(
     var message_id: Int,
     var mask: Int,
     var peer_id: Int,
-    var timestamp: Int,
+    var timestamp: Int?,
     var new_text: String?,
     var attachments: Any? = null,
 )
