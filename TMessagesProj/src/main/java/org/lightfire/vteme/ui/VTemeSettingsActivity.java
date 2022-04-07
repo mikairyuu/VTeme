@@ -135,11 +135,11 @@ public class VTemeSettingsActivity extends BaseFragment {
             @Override
             public void success(MessagesGetConversationsResponse vkMsg) {
                 if (vkMsg != null) {
-                    UIUtil.runOnIoDispatcher(()->{
+                    UIUtil.runOnIoDispatcher(() -> {
                         TLRPC.messages_Dialogs convRes = DTOConverters.VKDialogsConverter(vkMsg);
-                        getMessagesStorage().putMessages(convRes.messages, false, false, false, 0, false);
-                        getMessagesStorage().putUsersAndChats(convRes.users, convRes.chats, false, false);
+                        getMessagesStorage().putDialogs(convRes, 0);
                         getMessagesController().processDialogsUpdate(convRes, null, false);
+                        getMessagesController().applyDialogsNotificationsSettings(convRes.dialogs);
                     });
                 }
             }

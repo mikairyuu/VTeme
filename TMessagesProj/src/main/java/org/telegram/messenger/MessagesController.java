@@ -8203,7 +8203,7 @@ public class MessagesController extends BaseController implements NotificationCe
         }
     }
 
-    private void applyDialogsNotificationsSettings(ArrayList<TLRPC.Dialog> dialogs) {
+    public void applyDialogsNotificationsSettings(ArrayList<TLRPC.Dialog> dialogs) {
         SharedPreferences.Editor editor = null;
         for (int a = 0; a < dialogs.size(); a++) {
             TLRPC.Dialog dialog = dialogs.get(a);
