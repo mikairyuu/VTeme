@@ -147,7 +147,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         else TLRPC.TL_peerUser().apply { user_id = peerId }
                         newMsg.id = update.message_id
                         newMsg.dialog_id = if (isChat) -peerId else peerId
-                        newMsg.unread = (newMsg.flags and 1) != 0
+                        newMsg.unread = (update.flags and 1) != 0
                         newMsg.flags = newMsg.flags or 256
 
                         AndroidUtilities.runOnUIThread {
