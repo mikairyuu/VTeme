@@ -5,10 +5,12 @@ import android.util.Pair;
 import androidx.annotation.Nullable;
 
 import com.vk.api.sdk.VK;
+import com.vk.sdk.api.messages.dto.MessagesChat;
 import com.vk.sdk.api.messages.dto.MessagesConversation;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
+import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
@@ -37,13 +39,10 @@ public class DTOConverters {
     }
 
     // Chat is nullable
-    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversationWithMessage conversationWithMessage) {
-        MessagesConversation conv = conversationWithMessage.getConversation();
+    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversation conv) {
         TLRPC.TL_dialog ret_dialog = makeVk(new TLRPC.TL_dialog());
         Pair<TLRPC.TL_dialog, TLRPC.TL_chat> retPair;
         ret_dialog.unread_count = conv.getUnreadCount() == null ? 0 : conv.getUnreadCount();
-        if (conversationWithMessage.getLastMessage() != null)
-            ret_dialog.last_message_date = conversationWithMessage.getLastMessage().getDate();
         ret_dialog.top_message = conv.getLastMessageId();
         ret_dialog.id = conv.getPeer().getId();
         ret_dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
@@ -72,6 +71,24 @@ public class DTOConverters {
             retPair = new Pair<>(ret_dialog, null);
         }
         return retPair;
+    }
+
+    public static Pair<TLRPC.TL_dialog, TLRPC.TL_chat> VKConversationConverter(MessagesConversationWithMessage conv) {
+        Pair<TLRPC.TL_dialog, TLRPC.TL_chat> resConv = DTOConverters.VKConversationConverter(conv.getConversation());
+        if (conv.getLastMessage() != null)
+            resConv.first.last_message_date = conv.getLastMessage().getDate();
+        return resConv;
+    }
+
+
+    public static TLRPC.TL_chat VKConversationConverter(MessagesChat conv) {
+        TLRPC.TL_chat retChat = makeVk(new TLRPC.TL_chat());
+        retChat.title = conv.getTitle();
+        retChat.participants_count = conv.getMembersCount();
+        retChat.id = conv.getId();
+        retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
+        retChat.version = 0;
+        return retChat;
     }
 
     public static TLRPC.TL_user VKUserConverter(UsersUserFull user) {
@@ -117,6 +134,16 @@ public class DTOConverters {
                 VKConversationConverter(new MessagesConversationWithMessage(conversation, null));
             }
         return res;
+    }
+
+    public static TLRPC.messages_Messages VKMessagesResponseConverter(MessagesGetLongPollHistoryResponse messages) {
+        return VKMessagesResponseConverter(new MessagesGetHistoryExtendedResponse(
+                messages.getConversations().size(),
+                messages.getMessages().getItems(),
+                messages.getProfiles(),
+                messages.getGroups(),
+                messages.getConversations()
+        ));
     }
 
     public static <T extends TLObject> T makeVk(T object) {

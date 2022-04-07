@@ -66,6 +66,10 @@ public class MessagesStorage extends BaseController {
     private byte[] secretPBytes = null;
     private int secretG = 0;
 
+    private int vkLastTs = 0;
+    private int vkLastPts = 0;
+    private int vkLastMaxMsgId = 0;
+
     private int lastSavedSeq = 0;
     private int lastSavedPts = 0;
     private int lastSavedDate = 0;
@@ -149,6 +153,36 @@ public class MessagesStorage extends BaseController {
     public int getLastSeqValue() {
         ensureOpened();
         return lastSeqValue;
+    }
+
+    public int getVkLastTs() {
+        ensureOpened();
+        return vkLastTs;
+    }
+
+    public int getVkLastPts() {
+        ensureOpened();
+        return vkLastPts;
+    }
+
+    public int getVkLastMaxMsgId() {
+        ensureOpened();
+        return vkLastMaxMsgId;
+    }
+
+    public void setVkLastTs(int value) {
+        ensureOpened();
+        vkLastTs = value;
+    }
+
+    public void setVkLastPts(int value) {
+        ensureOpened();
+        vkLastPts = value;
+    }
+
+    public void setVkLastMaxMsgId(int value) {
+        ensureOpened();
+        vkLastMaxMsgId = value;
     }
 
     public void setLastSeqValue(int value) {
@@ -327,6 +361,9 @@ public class MessagesStorage extends BaseController {
                 database.executeFast("CREATE TABLE params(id INTEGER PRIMARY KEY, seq INTEGER, pts INTEGER, date INTEGER, qts INTEGER, lsv INTEGER, sg INTEGER, pbytes BLOB)").stepThis().dispose();
                 database.executeFast("INSERT INTO params VALUES(1, 0, 0, 0, 0, 0, 0, NULL)").stepThis().dispose();
 
+                database.executeFast("CREATE TABLE vkparams(id INTEGER PRIMARY KEY, ts INTEGER, pts INTEGER, max_msg_id INTEGER)").stepThis().dispose();
+                database.executeFast("INSERT INTO vkparams VALUES(1, 0, 0, 0)").stepThis().dispose();
+
                 database.executeFast("CREATE TABLE media_v4(mid INTEGER, uid INTEGER, date INTEGER, type INTEGER, data BLOB, PRIMARY KEY(mid, uid, type))").stepThis().dispose();
                 database.executeFast("CREATE INDEX IF NOT EXISTS uid_mid_type_date_idx_media_v4 ON media_v4(uid, mid, type, date);").stepThis().dispose();
 
@@ -421,6 +458,13 @@ public class MessagesStorage extends BaseController {
                                 secretPBytes = null;
                             }
                         }
+                    }
+                    cursor.dispose();
+                    cursor = database.queryFinalized("SELECT ts, pts, max_msg_id FROM vkparams WHERE id = 1");
+                    if (cursor.next()) {
+                        vkLastTs = cursor.intValue(0);
+                        vkLastPts = cursor.intValue(1);
+                        vkLastMaxMsgId = cursor.intValue(2);
                     }
                     cursor.dispose();
                 } catch (Exception e) {
@@ -1998,8 +2042,28 @@ public class MessagesStorage extends BaseController {
         }
     }
 
+    private void saveVKDiffParamsInternal(int ts, int pts, int max_msg_id) {
+        try {
+            SQLitePreparedStatement state = database.executeFast("UPDATE vkparams SET ts = ?, pts = ?, max_msg_id = ? WHERE id = 1");
+            state.bindInteger(1, ts);
+            state.bindInteger(2, pts);
+            state.bindInteger(3, max_msg_id);
+            state.step();
+            state.dispose();
+            vkLastTs = ts;
+            vkLastPts = pts;
+            vkLastMaxMsgId = max_msg_id;
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+    }
+
     public void saveDiffParams(int seq, int pts, int date, int qts) {
         storageQueue.postRunnable(() -> saveDiffParamsInternal(seq, pts, date, qts));
+    }
+
+    public void saveVKDiffParams(int ts, int pts, int max_msg_id) {
+        storageQueue.postRunnable(() -> saveVKDiffParamsInternal(ts, pts, max_msg_id));
     }
 
     public void updateMutedDialogsFiltersCounters() {
