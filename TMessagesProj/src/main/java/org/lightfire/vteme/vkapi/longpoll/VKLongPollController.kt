@@ -12,9 +12,7 @@ import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import okhttp3.*
 import org.lightfire.vteme.vkapi.DTOConverters
-import org.lightfire.vteme.vkapi.longpoll.DTO.LPServerResponseWrapper
-import org.lightfire.vteme.vkapi.longpoll.DTO.MessageFlagsSet
-import org.lightfire.vteme.vkapi.longpoll.DTO.NewMessageAdded
+import org.lightfire.vteme.vkapi.longpoll.DTO.*
 import org.telegram.messenger.*
 import org.telegram.tgnet.TLRPC
 import java.io.IOException
@@ -107,6 +105,34 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
 
     private fun convertMiscUpdate(update: Any): TLRPC.Update? {
         when (update) {
+            is MessagesReadInbox -> {
+                return TLRPC.TL_updateReadHistoryInbox().apply {
+                    val isChat = update.peer_id >= 2000000000
+                    max_id = update.local_id
+                    if (isChat) {
+                        peer = TLRPC.TL_peerChat()
+                        peer.chat_id = update.peer_id.toLong()
+                    } else {
+                        peer = TLRPC.TL_peerUser()
+                        peer.user_id = update.peer_id.toLong()
+                    }
+                }
+            }
+
+            is MessagesReadOutbox -> {
+                return TLRPC.TL_updateReadHistoryOutbox().apply {
+                    val isChat = update.peer_id >= 2000000000
+                    max_id = update.local_id
+                    if (isChat) {
+                        peer = TLRPC.TL_peerChat()
+                        peer.chat_id = update.peer_id.toLong()
+                    } else {
+                        peer = TLRPC.TL_peerUser()
+                        peer.user_id = update.peer_id.toLong()
+                    }
+                }
+            }
+
             is MessageFlagsSet -> {
                 if ((update.mask and 128) != 0) return TLRPC.TL_updateDeleteMessages()
                     .apply { messages.add(update.message_id) }
