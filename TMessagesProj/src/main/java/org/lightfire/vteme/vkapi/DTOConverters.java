@@ -24,7 +24,7 @@ public class DTOConverters {
         resMsg.message = message.getText();
         resMsg.date = message.getDate();
         resMsg.out = message.getOut().getValue() == 1;
-        resMsg.id = message.getConversationMessageId();
+        resMsg.id = message.getId();
         resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
         resMsg.flags = resMsg.flags | 256;
         resMsg.random_id = message.getRandomId();
@@ -48,14 +48,18 @@ public class DTOConverters {
         ret_dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
         ret_dialog.read_inbox_max_id = conv.getInRead();
         ret_dialog.read_outbox_max_id = conv.getOutRead();
-        if (conv.getPushSettings() != null)
+        if (conv.getPushSettings() != null){
             ret_dialog.notify_settings.mute_until = conv.getPushSettings().getDisabledForever() ? Integer.MAX_VALUE : 0;
+            ret_dialog.notify_settings.flags = conv.getPushSettings().getDisabledForever() ? ret_dialog.notify_settings.flags | 4 : 0;
+        }
         if (conv.getPeer().getType().getValue().equals("user")) {
             ret_dialog.peer = makeVk(new TLRPC.TL_peerUser());
             ret_dialog.peer.user_id = conv.getPeer().getId();
             retPair = new Pair<>(ret_dialog, null);
         } else if (conv.getPeer().getType().getValue().equals("chat")) {
             TLRPC.TL_chat retChat = makeVk(new TLRPC.TL_chat());
+            ret_dialog.peer = makeVk(new TLRPC.TL_peerChat());
+            ret_dialog.peer.chat_id = conv.getPeer().getId();
             retChat.title = conv.getChatSettings().getTitle();
             retChat.participants_count = conv.getChatSettings().getMembersCount();
             ret_dialog.id = -ret_dialog.id;
