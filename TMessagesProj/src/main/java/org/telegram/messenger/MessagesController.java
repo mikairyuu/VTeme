@@ -8901,6 +8901,11 @@ public class MessagesController extends BaseController implements NotificationCe
             });
         } else if (!DialogObject.isEncryptedDialog(task.dialogId)) {
             TLRPC.InputPeer inputPeer = getInputPeer(task.dialogId);
+            if(inputPeer.isVK){
+                VK.execute(new MessagesService().messagesMarkAsRead(null,
+                        (int) (inputPeer instanceof TLRPC.TL_inputPeerChat ? inputPeer.chat_id : inputPeer.user_id),
+                        task.maxId, null, null), null);
+            }else{
             TLObject req;
             if (inputPeer instanceof TLRPC.TL_inputPeerChannel) {
                 TLRPC.TL_channels_readHistory request = new TLRPC.TL_channels_readHistory();
@@ -8920,7 +8925,7 @@ public class MessagesController extends BaseController implements NotificationCe
                         processNewDifferenceParams(-1, res.pts, -1, res.pts_count);
                     }
                 }
-            });
+            });}
         } else {
             TLRPC.EncryptedChat chat = getEncryptedChat(DialogObject.getEncryptedChatId(task.dialogId));
             if (chat.auth_key != null && chat.auth_key.length > 1 && chat instanceof TLRPC.TL_encryptedChat) {
