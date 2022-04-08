@@ -159,6 +159,22 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     notify_settings.silent = update.sound == 1
                 }
             }
+
+            is UserTypesTextDialog -> {
+                return TLRPC.TL_updateUserTyping().apply {
+                    action = TLRPC.TL_sendMessageTypingAction()
+                    user_id = update.user_id.toLong()
+                }
+            }
+
+            is UserTypesTextChat -> {
+                return TLRPC.TL_updateChatUserTyping().apply {
+                    action = TLRPC.TL_sendMessageTypingAction()
+                    chat_id = update.chat_id.toLong()
+                    from_id = TLRPC.TL_peerUser()
+                    from_id.user_id = update.user_id.toLong()
+                }
+            }
         }
         return null
     }
@@ -214,6 +230,17 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             0,
                             false
                         )
+                    }
+
+                    is UsersTypeTextChat -> {
+                        repeat(update.total_count) {
+                            updatesRest.add(TLRPC.TL_updateChatUserTyping().apply {
+                                action = TLRPC.TL_sendMessageTypingAction()
+                                chat_id = update.peer_id.toLong()
+                                from_id = TLRPC.TL_peerUser()
+                                from_id.user_id = update.users_ids[it].toLong()
+                            })
+                        }
                     }
                 }
                 val miscUpdate = convertMiscUpdate(update)
