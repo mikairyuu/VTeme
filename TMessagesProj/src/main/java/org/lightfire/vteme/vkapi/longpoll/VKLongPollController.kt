@@ -22,6 +22,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     var cache: MessagesGetLongPollHistoryResponse? = null
     private var vkKey: String? = null
     private var vkServer: String? = null
+    private var inited = false
 
     private val okhttpClient: OkHttpClient by lazy { OkHttpClient() }
     private val gson: Gson
@@ -38,6 +39,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
             MessagesService().messagesGetLongPollServer(true, null, 3),
             object : VKApiCallback<MessagesLongpollParams?> {
                 override fun success(result: MessagesLongpollParams?) {
+                    inited = true
                     if (result == null) return
                     vkServer = result.server
                     vkKey = result.key
@@ -71,6 +73,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     }
 
     fun startPolling() {
+        if (!inited) return
         if (okhttpClient.dispatcher.idleCallback == null) {
             okhttpClient.dispatcher.idleCallback = Runnable {
                 okhttpClient.newCall(
@@ -99,6 +102,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     }
 
     fun stopPolling() {
+        if (!inited) return
         okhttpClient.dispatcher.idleCallback = null
     }
 

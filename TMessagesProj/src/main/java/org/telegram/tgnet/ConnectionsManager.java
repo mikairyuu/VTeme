@@ -15,6 +15,7 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.lightfire.vteme.vkapi.longpoll.VKLongPollController;
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.BaseController;
@@ -491,6 +492,7 @@ public class ConnectionsManager extends BaseController {
                 lastPauseTime = System.currentTimeMillis();
             }
             native_pauseNetwork(currentAccount);
+            VKLongPollController.Companion.getInstance(0).stopPolling();
         } else {
             if (appPaused) {
                 return;
@@ -503,6 +505,7 @@ public class ConnectionsManager extends BaseController {
             }
             lastPauseTime = 0;
             native_resumeNetwork(currentAccount, false);
+            VKLongPollController.Companion.getInstance(0).startPolling();
         }
     }
 
