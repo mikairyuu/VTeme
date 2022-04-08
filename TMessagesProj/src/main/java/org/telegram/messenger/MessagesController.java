@@ -8389,7 +8389,7 @@ public class MessagesController extends BaseController implements NotificationCe
             newTaskId = taskId;
         }
 
-        getConnectionsManager().sendRequest(req, (response, error) -> {
+        RequestDelegate onResult = (response, error) -> {
             if (response != null) {
                 TLRPC.messages_Messages res = (TLRPC.messages_Messages) response;
                 removeDeletedMessagesFromArray(dialog.id, res.messages);
@@ -8450,7 +8450,25 @@ public class MessagesController extends BaseController implements NotificationCe
                 getMessagesStorage().removePendingTask(newTaskId);
             }
             AndroidUtilities.runOnUIThread(() -> checkingLastMessagesDialogs.delete(dialog.id));
-        });
+        };
+        if(req.peer.isVK){
+            VK.execute(new MessagesService().messagesGetHistoryExtended(0, 1, null,
+                    req.peer instanceof TLRPC.TL_inputPeerChat ? (int) req.peer.chat_id : (int) req.peer.user_id,
+                    null, null, null, null), new VKApiCallback<MessagesGetHistoryExtendedResponse>(){
+
+                @Override
+                public void success(MessagesGetHistoryExtendedResponse messagesGetHistoryExtendedResponse) {
+                    onResult.run(DTOConverters.VKMessagesResponseConverter(messagesGetHistoryExtendedResponse), null);
+                }
+
+                @Override
+                public void fail(@NonNull Exception e) {
+                    onResult.run(null, null);
+                }
+            });
+        } else {
+            getConnectionsManager().sendRequest(req, onResult);
+        }
     }
 
     public void processDialogsUpdate(final TLRPC.messages_Dialogs dialogsRes, ArrayList<TLRPC.EncryptedChat> encChats, boolean fromCache) {
