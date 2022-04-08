@@ -3572,6 +3572,10 @@ public class MessagesController extends BaseController implements NotificationCe
         if (dialogs_read_inbox_max.get(dialogId) == null || dialogs_read_outbox_max.get(dialogId) == null) {
             reloadDialogsReadValue(null, dialogId);
         }
+        if(user.isVK){
+            AndroidUtilities.runOnUIThread(() -> loadingFullUsers.remove(user.id));
+            //TODO: make VK loadFullUser
+        }else{
         int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
             if (error == null) {
                 TLRPC.TL_users_userFull res = (TLRPC.TL_users_userFull) response;
@@ -3628,7 +3632,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 AndroidUtilities.runOnUIThread(() -> loadingFullUsers.remove(user.id));
             }
         });
-        getConnectionsManager().bindRequestToGuid(reqId, classGuid);
+        getConnectionsManager().bindRequestToGuid(reqId, classGuid);}
     }
 
     private void reloadMessages(ArrayList<Integer> mids, long dialogId, boolean scheduled) {
@@ -3840,7 +3844,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadPeerSettings(TLRPC.User currentUser, TLRPC.Chat currentChat) {
-        if (currentUser == null && currentChat == null || currentChat != null && currentChat.isVK) {
+        if (currentUser == null && currentChat == null) {
             return;
         }
         long dialogId;
@@ -3869,6 +3873,7 @@ public class MessagesController extends BaseController implements NotificationCe
         } else {
             req.peer = getInputPeer(-currentChat.id);
         }
+        if(req.peer.isVK) return;
         getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
             loadingPeerSettings.remove(dialogId);
             if (response != null) {
@@ -8665,11 +8670,12 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadReactionsForMessages(long dialogId, ArrayList<MessageObject> visibleObjects) {
-        if (visibleObjects.isEmpty() || getMessagesController().dialogs_dict.get(dialogId).isVK) {
+        if (visibleObjects.isEmpty()) {
             return;
         }
         TLRPC.TL_messages_getMessagesReactions req = new TLRPC.TL_messages_getMessagesReactions();
         req.peer = getInputPeer(dialogId);
+        if(req.peer.isVK) return;
         for (int i = 0; i < visibleObjects.size(); i++) {
             MessageObject messageObject = visibleObjects.get(i);
             req.id.add(messageObject.getId());

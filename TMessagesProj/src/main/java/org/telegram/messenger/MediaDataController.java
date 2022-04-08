@@ -2620,6 +2620,7 @@ public class MediaDataController extends BaseController {
                         }
                     }
                     if (!req.filters.isEmpty()) {
+                        if(req.peer != null && req.peer.isVK) return;
                         int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
                             for (int i = 0; i < counts.length; i++) {
                                 if (counts[i] < 0) {
@@ -3881,6 +3882,15 @@ public class MediaDataController extends BaseController {
         req.offset_id = maxId;
         req.q = "";
         req.filter = new TLRPC.TL_inputMessagesFilterPinned();
+        if(req.peer.isVK){
+            if(req.peer instanceof TLRPC.TL_inputPeerChat){
+
+            }else{
+
+            }
+            AndroidUtilities.runOnUIThread(() -> loadingPinnedMessages.remove(dialogId));
+            //TODO: handle VK pinned messages
+        }
         getConnectionsManager().sendRequest(req, (response, error) -> {
             ArrayList<Integer> ids = new ArrayList<>();
             HashMap<Integer, MessageObject> messages = new HashMap<>();
