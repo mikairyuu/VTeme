@@ -140,6 +140,25 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                 if ((update.mask and 128) != 0) return TLRPC.TL_updateDeleteMessages()
                     .apply { messages.add(update.message_id) }
             }
+
+            is PushSettingsChanged -> {
+                return TLRPC.TL_updateNotifySettings().apply {
+                    peer = TLRPC.TL_notifyPeer().apply {
+                        if (update.peer_id >= 2000000000) {
+                            peer = TLRPC.TL_peerChat()
+                            peer.chat_id = update.peer_id.toLong()
+                        } else {
+                            peer = TLRPC.TL_peerUser()
+                            peer.user_id = update.peer_id.toLong()
+                        }
+                    }
+                    notify_settings = TLRPC.TL_peerNotifySettings()
+                    notify_settings.flags = 6
+                    notify_settings.mute_until =
+                        if (update.disabled_until == -1) Int.MAX_VALUE else 0
+                    notify_settings.silent = update.sound == 1
+                }
+            }
         }
         return null
     }

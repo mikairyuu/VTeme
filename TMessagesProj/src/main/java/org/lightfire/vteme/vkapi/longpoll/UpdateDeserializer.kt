@@ -161,13 +161,24 @@ object UpdateDeserializeUtils {
                 }
                 //80 -> ignored
                 114 -> {
-                    updateList.add(
-                        PushSettingsChanged(
-                            array.getInt(1, jsonMode),
-                            array.getInt(2, jsonMode),
-                            array.getInt(3, jsonMode),
+                    if (jsonMode) {
+                        val obj = (array as JsonArray)[1].asJsonObject
+                        updateList.add(
+                            PushSettingsChanged(
+                                obj["peer_id"].asInt,
+                                obj["sound"].asInt,
+                                if(obj["disabled_until"].isJsonNull) null else obj["disabled_until"].asInt,
+                            )
                         )
-                    )
+                    } else {
+                        updateList.add(
+                            PushSettingsChanged(
+                                array.getInt(1, jsonMode),
+                                array.getInt(2, jsonMode),
+                                array.getInt(3, jsonMode),
+                            )
+                        )
+                    }
                 }
 
             }
@@ -217,6 +228,10 @@ class UpdateDeserializer : JsonDeserializer<LPServerResponseWrapper> {
             return LPServerResponseWrapper(-1, -1, updateList)
         }
 
-        return LPServerResponseWrapper(obj.get("ts").asInt, obj.get("pts").asInt, UpdateDeserializeUtils.decode(obj.getAsJsonArray("updates")))
+        return LPServerResponseWrapper(
+            obj.get("ts").asInt,
+            obj.get("pts").asInt,
+            UpdateDeserializeUtils.decode(obj.getAsJsonArray("updates"))
+        )
     }
 }

@@ -157,5 +157,5 @@ data class CounterChanged(
 data class PushSettingsChanged(
     var peer_id: Int,
     var sound: Int,
-    var disabled_until: Int,
+    var disabled_until: Int?,
 )
