@@ -38,9 +38,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.UiThread;
 import androidx.collection.LongSparseArray;
 import androidx.core.view.inputmethod.InputContentInfoCompat;
+
+import com.vk.api.sdk.VK;
+import com.vk.api.sdk.VKApiCallback;
+import com.vk.sdk.api.messages.MessagesService;
 
 import org.json.JSONObject;
 import org.telegram.messenger.audioinfo.AudioInfo;
@@ -3117,6 +3122,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         long linkedToGroup = 0;
         TLRPC.EncryptedChat encryptedChat = null;
         TLRPC.InputPeer sendToPeer = !DialogObject.isEncryptedDialog(peer) ? getMessagesController().getInputPeer(peer) : null;
+        boolean isVK = sendToPeer.isVK;
         long myId = getUserConfig().getClientUserId();
         if (DialogObject.isEncryptedDialog(peer)) {
             encryptedChat = getMessagesController().getEncryptedChat(DialogObject.getEncryptedChatId(peer));
@@ -3444,7 +3450,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     }
                 } else {
                     newMsg.from_id = new TLRPC.TL_peerUser();
-                    newMsg.from_id.user_id = myId;
+                    newMsg.from_id.user_id = isVK ? VK.getUserId().getValue() : myId;
                     newMsg.flags |= TLRPC.MESSAGE_FLAG_HAS_FROM_ID;
                 }
                 getUserConfig().saveConfig(false);
@@ -3630,6 +3636,8 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     delayedMessage.finalGroupMessage = newMsg.id;
                 }
             }
+
+            if(isVK) newMsgObj.messageOwner.isVK = true;
 
             if (BuildVars.LOGS_ENABLED) {
                 if (sendToPeer != null) {
@@ -5238,6 +5246,66 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         }
         final TLRPC.Message newMsgObj = msgObj.messageOwner;
         putToSendingMessages(newMsgObj, scheduled);
+        if(newMsgObj.isVK){
+            boolean isChat = newMsgObj.peer_id instanceof TLRPC.TL_peerChat;
+            long peer_id = isChat ? newMsgObj.peer_id.chat_id : newMsgObj.peer_id.user_id;
+            VK.execute(new MessagesService().messagesSend(null, (int) newMsgObj.random_id, (int) peer_id,
+                    null,null, isChat ? (int) peer_id : null, null, newMsgObj.message,
+                    null, null, "", null, null, null, null,
+                    null, null, null, null, null, null,
+                    null, null, null), new VKApiCallback<Integer>(){
+                @Override
+                public void success(Integer id) {
+                    final int oldId = newMsgObj.id;
+                    final ArrayList<TLRPC.Message> sentMessages = new ArrayList<>();
+                    final String attachPath = newMsgObj.attachPath;
+                    final int existFlags;
+                    updateMediaPaths(msgObj, null, id, null, false);
+                    existFlags = msgObj.getMediaExistanceFlags();
+                    newMsgObj.local_id = newMsgObj.id = id;
+                    if (!newMsgObj.entities.isEmpty()) {
+                        newMsgObj.flags |= TLRPC.MESSAGE_FLAG_HAS_ENTITIES;
+                    }
+                    Integer value = getMessagesController().dialogs_read_outbox_max.get(newMsgObj.dialog_id);
+                    if (value == null) {
+                        value = getMessagesStorage().getDialogReadMax(newMsgObj.out, newMsgObj.dialog_id);
+                        getMessagesController().dialogs_read_outbox_max.put(newMsgObj.dialog_id, value);
+                    }
+                    newMsgObj.unread = value < newMsgObj.id;
+                    sentMessages.add(newMsgObj);
+
+                    getStatsController().incrementSentItemsCount(ApplicationLoader.getCurrentNetworkType(), StatsController.TYPE_MESSAGES, 1);
+                    newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+
+                    getNotificationCenter().postNotificationName(NotificationCenter.messageReceivedByServer, oldId, newMsgObj.id, newMsgObj, newMsgObj.dialog_id, 0L, existFlags, scheduled);
+                    getMessagesStorage().getStorageQueue().postRunnable(() -> {
+                        getMessagesStorage().updateMessageStateAndId(newMsgObj.random_id, MessageObject.getPeerId(newMsgObj.peer_id), oldId, newMsgObj.id, 0, false, scheduled ? 1 : 0);
+                        getMessagesStorage().putMessages(sentMessages, true, false, false, 0, scheduled);
+                        AndroidUtilities.runOnUIThread(() -> {
+                            getMediaDataController().increasePeerRaiting(newMsgObj.dialog_id);
+                            getNotificationCenter().postNotificationName(NotificationCenter.messageReceivedByServer, oldId, newMsgObj.id, newMsgObj, newMsgObj.dialog_id, 0L, existFlags, scheduled);
+                            processSentMessage(oldId);
+                            removeFromSendingMessages(oldId, scheduled);
+                        });
+                        if (MessageObject.isVideoMessage(newMsgObj) || MessageObject.isRoundVideoMessage(newMsgObj) || MessageObject.isNewGifMessage(newMsgObj)) {
+                            stopVideoService(attachPath);
+                        }
+                    });
+                }
+
+                @Override
+                public void fail(@NonNull Exception e) {
+                    getMessagesStorage().markMessageAsSendError(newMsgObj, scheduled);
+                    newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SEND_ERROR;
+                    getNotificationCenter().postNotificationName(NotificationCenter.messageSendError, newMsgObj.id);
+                    processSentMessage(newMsgObj.id);
+                    if (MessageObject.isVideoMessage(newMsgObj) || MessageObject.isRoundVideoMessage(newMsgObj) || MessageObject.isNewGifMessage(newMsgObj)) {
+                        stopVideoService(newMsgObj.attachPath);
+                    }
+                    removeFromSendingMessages(newMsgObj.id, scheduled);
+                }
+            });
+        } else {
         newMsgObj.reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
             if (error != null && (req instanceof TLRPC.TL_messages_sendMedia || req instanceof TLRPC.TL_messages_editMessage) && FileRefController.isFileRefError(error.text)) {
                 if (parentObject != null) {
@@ -5509,7 +5577,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
                 getNotificationCenter().postNotificationName(NotificationCenter.messageReceivedByAck, msg_id);
             });
-        }, ConnectionsManager.RequestFlagCanCompress | ConnectionsManager.RequestFlagInvokeAfter | (req instanceof TLRPC.TL_messages_sendMessage ? ConnectionsManager.RequestFlagNeedQuickAck : 0));
+        }, ConnectionsManager.RequestFlagCanCompress | ConnectionsManager.RequestFlagInvokeAfter | (req instanceof TLRPC.TL_messages_sendMessage ? ConnectionsManager.RequestFlagNeedQuickAck : 0)); }
         if (parentMessage != null) {
             parentMessage.sendDelayedRequests();
         }

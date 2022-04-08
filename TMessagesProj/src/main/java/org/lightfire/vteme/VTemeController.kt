@@ -44,7 +44,7 @@ class VTemeController(num: Int) : BaseController(num) {
         fun getInstance(num: Int): VTemeController? {
             var localInstance = Instance
             if (localInstance == null) {
-                synchronized(VKLongPollController::class.java) {
+                synchronized(VTemeController::class.java) {
                     localInstance = Instance
                     if (localInstance == null) {
                         localInstance = VTemeController(num)
