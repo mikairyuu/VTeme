@@ -6462,11 +6462,11 @@ public class MessagesController extends BaseController implements NotificationCe
             } else if (mode == 2) {
 
             } else if (mode == 1) {
-                if(dialogs_dict.get(dialogId).isVK){
-                    return;
-                }
                 TLRPC.TL_messages_getScheduledHistory req = new TLRPC.TL_messages_getScheduledHistory();
                 req.peer = getInputPeer(dialogId);
+                if(req.peer.isVK){
+                    return;
+                }
                 req.hash = minDate;
                 int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
                     if (response != null) {
