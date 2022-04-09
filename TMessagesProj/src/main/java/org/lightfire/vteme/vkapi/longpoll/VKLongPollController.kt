@@ -278,7 +278,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
 
     fun getHistoryDiff(
         newPts: Int = 0,
-        onComplete: ((success: Boolean) -> Unit)? = null
+        onComplete: ((success: Boolean) -> Unit)? = null,
     ) {
         val limit = if (ApplicationLoader.isConnectedOrConnectingToWiFi()) 3000 else 700
         if (newPts - messagesStorage.vkLastPts > limit && newPts != 0) {
@@ -300,6 +300,8 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         val usersDict = LongSparseArray<TLRPC.User>()
                         val chatsArray = arrayListOf<TLRPC.Chat>()
                         val chatsDict = LongSparseArray<TLRPC.Chat>()
+                        val newDialogArray = arrayListOf<TLRPC.Dialog>()
+
                         if (result!!.profiles != null)
                             for (a in result.profiles!!)
                                 DTOConverters.VKUserConverter(a).apply {
@@ -309,9 +311,14 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         if (result.conversations != null)
                             for (a in result.conversations!!) {
                                 if (a.peer.type.value == "chat") {
-                                    val convRes = DTOConverters.VKConversationConverter(a).second
-                                    chatsDict.put(convRes.id, convRes)
-                                    chatsArray.add(convRes)
+                                    val convRes = DTOConverters.VKConversationConverter(a)
+                                    chatsDict.put(convRes.second.id, convRes.second)
+                                    chatsArray.add(convRes.second)
+                                    if (messagesController.dialogs_dict[-convRes.second.id] == null)
+                                        newDialogArray.add(convRes.first)
+                                } else {
+                                    if (messagesController.dialogs_dict[a.peer.id.toLong()] == null)
+                                        newDialogArray.add(DTOConverters.VKConversationConverter(a).first)
                                 }
                             }
 
@@ -324,6 +331,10 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         messagesStorage.storageQueue.postRunnable {
                             messagesStorage.putUsersAndChats(usersArray, chatsArray, true, false)
                             Utilities.stageQueue.postRunnable {
+                                if (newDialogArray.isNotEmpty()) messagesController.applyDialogsNotificationsSettings(
+                                    newDialogArray
+                                )
+
                                 if (result.messages?.items?.isEmpty() == false) {
                                     val tg_msg = arrayListOf<TLRPC.Message>()
                                     for (msg in result.messages!!.items!!)
