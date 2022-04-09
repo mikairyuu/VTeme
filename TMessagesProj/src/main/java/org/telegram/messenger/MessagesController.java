@@ -4815,7 +4815,21 @@ public class MessagesController extends BaseController implements NotificationCe
                 }
                 newTaskId = getMessagesStorage().createPendingTask(data);
             }
-
+            TLRPC.InputPeer peer = getInputPeer(dialogId);
+            if (peer.isVK) {
+                VK.execute(new MessagesService().messagesDelete(req.id, false, null,
+                        req.revoke, (peer instanceof TLRPC.TL_inputPeerUser) ? (int) dialogId :
+                                -(int) dialogId, null), new VKApiCallback<Object>(){
+                    @Override
+                    public void success(Object o) {
+                        if (newTaskId != 0) getMessagesStorage().removePendingTask(newTaskId);
+                    }
+                    @Override
+                    public void fail(@NonNull Exception e) {
+                        if (newTaskId != 0) getMessagesStorage().removePendingTask(newTaskId);
+                    }
+                });
+            } else {
             getConnectionsManager().sendRequest(req, (response, error) -> {
                 if (error == null) {
                     TLRPC.TL_messages_affectedMessages res = (TLRPC.TL_messages_affectedMessages) response;
@@ -4824,7 +4838,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (newTaskId != 0) {
                     getMessagesStorage().removePendingTask(newTaskId);
                 }
-            });
+            });}
         }
     }
 
