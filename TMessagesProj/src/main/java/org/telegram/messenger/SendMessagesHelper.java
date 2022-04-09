@@ -45,6 +45,7 @@ import androidx.core.view.inputmethod.InputContentInfoCompat;
 
 import com.vk.api.sdk.VK;
 import com.vk.api.sdk.VKApiCallback;
+import com.vk.sdk.api.base.dto.BaseBoolInt;
 import com.vk.sdk.api.messages.MessagesService;
 
 import org.json.JSONObject;
@@ -5246,16 +5247,19 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         }
         final TLRPC.Message newMsgObj = msgObj.messageOwner;
         putToSendingMessages(newMsgObj, scheduled);
-        if(newMsgObj.isVK){
+        if(newMsgObj.isVK) {
             boolean isChat = newMsgObj.peer_id instanceof TLRPC.TL_peerChat;
             long peer_id = isChat ? newMsgObj.peer_id.chat_id : newMsgObj.peer_id.user_id;
-            VK.execute(new MessagesService().messagesSend(null, (int) newMsgObj.random_id, (int) peer_id,
-                    null,null, isChat ? (int) peer_id : null, null, newMsgObj.message,
-                    null, null, "", null, null, null, null,
-                    null, null, null, null, null, null,
-                    null, null, null), new VKApiCallback<Integer>(){
+            VKApiCallback<Integer> callback = new VKApiCallback<Integer>() {
                 @Override
                 public void success(Integer id) {
+                    if(req instanceof TLRPC.TL_messages_editMessage) {
+                        AndroidUtilities.runOnUIThread(() -> Utilities.stageQueue.postRunnable(() -> {
+                            AndroidUtilities.runOnUIThread(() -> {
+                                processSentMessage(newMsgObj.id);
+                                removeFromSendingMessages(newMsgObj.id, scheduled);
+                            });}));
+                    } else {
                     final int oldId = newMsgObj.id;
                     final ArrayList<TLRPC.Message> sentMessages = new ArrayList<>();
                     final String attachPath = newMsgObj.attachPath;
@@ -5290,6 +5294,11 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         if (MessageObject.isVideoMessage(newMsgObj) || MessageObject.isRoundVideoMessage(newMsgObj) || MessageObject.isNewGifMessage(newMsgObj)) {
                             stopVideoService(attachPath);
                         }
+                    });}
+                    final int msg_id = newMsgObj.id;
+                    AndroidUtilities.runOnUIThread(() -> {
+                        newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
+                        getNotificationCenter().postNotificationName(NotificationCenter.messageReceivedByAck, msg_id);
                     });
                 }
 
@@ -5304,7 +5313,24 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     }
                     removeFromSendingMessages(newMsgObj.id, scheduled);
                 }
-            });
+            };
+
+            if(req instanceof TLRPC.TL_messages_editMessage){
+                TLRPC.TL_messages_editMessage curReq = (TLRPC.TL_messages_editMessage) req;
+                VK.execute(new MessagesService().messagesEdit((int) peer_id, curReq.message, null,
+                        null,null,null,null,null,null,
+                        null, curReq.id, null,null,null),new VKApiCallback<BaseBoolInt>(){
+                    @Override
+                    public void success(BaseBoolInt baseBoolInt) { callback.success(baseBoolInt.getValue()); }
+                    @Override
+                    public void fail(@NonNull Exception e) { callback.fail(e); }
+                });
+            }else if(req instanceof TLRPC.TL_messages_sendMessage){
+            VK.execute(new MessagesService().messagesSend(null, (int) newMsgObj.random_id, (int) peer_id,
+                    null,null, isChat ? (int) peer_id : null, null, newMsgObj.message,
+                    null, null, "", null, null, null, null,
+                    null, null, null, null, null, null,
+                    null, null, null),callback);}
         } else {
         newMsgObj.reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
             if (error != null && (req instanceof TLRPC.TL_messages_sendMedia || req instanceof TLRPC.TL_messages_editMessage) && FileRefController.isFileRefError(error.text)) {

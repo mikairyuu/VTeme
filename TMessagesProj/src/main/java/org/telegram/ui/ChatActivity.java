@@ -22153,6 +22153,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             TLRPC.TL_messages_getMessageEditData req = new TLRPC.TL_messages_getMessageEditData();
             req.peer = getMessagesController().getInputPeer(dialog_id);
             req.id = messageObject.getId();
+            if (!req.peer.isVK) {
             editingMessageObjectReqId = getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
                 editingMessageObjectReqId = 0;
                 if (response == null) {
@@ -22170,7 +22171,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                         hideFieldPanel(true);
                     }
                 }
-            }));
+            }));}
         } else {
             chatActivityEnterView.showEditDoneProgress(false, true);
         }
