@@ -98,7 +98,19 @@ public class DTOConverters {
         retUser.last_name = user.getLastName();
         retUser.flags = retUser.flags | 6;
         retUser.photo = new TLRPC.TL_userProfilePhotoEmpty();
+        retUser.status = new TLRPC.TL_userStatusRecently();
         if (VK.getUserId() == user.getId()) retUser.self = true;
+        return retUser;
+    }
+
+    public static TLRPC.TL_userFull VKFullUserConverter(UsersUserFull user){
+        TLRPC.TL_userFull retUser = new TLRPC.TL_userFull();
+        retUser.about = user.getStatus();
+        retUser.blocked = user.getBlacklistedByMe().getValue() == 1;
+        retUser.flags = 3;
+        retUser.user = VKUserConverter(user);
+        retUser.user.username = user.getDomain();
+        retUser.user.flags = retUser.user.flags | 8;
         return retUser;
     }
 

@@ -32,11 +32,13 @@ import androidx.core.util.Consumer;
 
 import com.vk.api.sdk.VK;
 import com.vk.api.sdk.VKApiCallback;
+import com.vk.dto.common.id.UserId;
 import com.vk.sdk.api.base.dto.BaseUserGroupFields;
 import com.vk.sdk.api.messages.MessagesService;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
+import com.vk.sdk.api.users.UsersService;
 import com.vk.sdk.api.users.dto.UsersFields;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
@@ -3573,9 +3575,46 @@ public class MessagesController extends BaseController implements NotificationCe
             reloadDialogsReadValue(null, dialogId);
         }
         if(user.isVK){
-            AndroidUtilities.runOnUIThread(() -> loadingFullUsers.remove(user.id));
-            //TODO: make VK loadFullUser
-        }else{
+            VK.execute(new UsersService().usersGet(Collections.singletonList(new UserId(user.id)),
+                    Arrays.asList(UsersFields.STATUS, UsersFields.LAST_SEEN, UsersFields.DOMAIN,
+                            UsersFields.BLACKLISTED_BY_ME),null),
+                    new VKApiCallback<List<UsersUserFull>>() {
+                @Override
+                public void success(List<UsersUserFull> usersUserFulls) {
+                    TLRPC.TL_userFull userFull = DTOConverters.VKFullUserConverter(usersUserFulls.get(0));
+                    getMessagesStorage().updateUserInfo(userFull, false);
+                    AndroidUtilities.runOnUIThread(() -> {
+                        int index = blockePeers.indexOfKey(user.id);
+                        if (userFull.blocked) {
+                            if (index < 0) {
+                                blockePeers.put(user.id, 1);
+                                getNotificationCenter().postNotificationName(NotificationCenter.blockedUsersDidLoad);
+                            }
+                        } else {
+                            if (index >= 0) {
+                                blockePeers.removeAt(index);
+                                getNotificationCenter().postNotificationName(NotificationCenter.blockedUsersDidLoad);
+                            }
+                        }
+                        fullUsers.put(user.id, userFull);
+                        loadingFullUsers.remove(user.id);
+                        loadedFullUsers.add(user.id);
+                        ArrayList<TLRPC.User> users = new ArrayList<>();
+                        users.add(userFull.user);
+                        putUsers(users, false);
+                        getMessagesStorage().putUsersAndChats(users, null, false, true);
+                        String names = user.first_name + user.last_name + user.username;
+                        if (!names.equals(userFull.user.first_name + userFull.user.last_name + userFull.user.username)) {
+                            getNotificationCenter().postNotificationName(NotificationCenter.updateInterfaces, UPDATE_MASK_NAME);
+                        }
+                        getNotificationCenter().postNotificationName(NotificationCenter.userInfoDidLoad, user.id, userFull);
+                    });
+                }
+
+                @Override
+                public void fail(@NonNull Exception e) {AndroidUtilities.runOnUIThread(() -> loadingFullUsers.remove(user.id));}
+            });
+        } else {
         int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
             if (error == null) {
                 TLRPC.TL_users_userFull res = (TLRPC.TL_users_userFull) response;
