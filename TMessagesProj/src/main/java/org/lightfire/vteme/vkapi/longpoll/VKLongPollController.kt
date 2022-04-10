@@ -175,6 +175,20 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     from_id.user_id = update.user_id.toLong()
                 }
             }
+
+            is UserWentOnline -> {
+                return TLRPC.TL_updateUserStatus().apply {
+                    status = TLRPC.TL_userStatusOnline()
+                    user_id = update.user_id.toLong()
+                }
+            }
+
+            is UserWentOffline -> {
+                return TLRPC.TL_updateUserStatus().apply {
+                    status = TLRPC.TL_userStatusOffline()
+                    user_id = update.user_id.toLong()
+                }
+            }
         }
         return null
     }
