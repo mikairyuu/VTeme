@@ -8,14 +8,20 @@ import com.vk.api.sdk.VK;
 import com.vk.sdk.api.messages.dto.MessagesChat;
 import com.vk.sdk.api.messages.dto.MessagesConversation;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
+import com.vk.sdk.api.messages.dto.MessagesForeignMessage;
+import com.vk.sdk.api.messages.dto.MessagesGetByConversationMessageIdExtendedResponse;
+import com.vk.sdk.api.messages.dto.MessagesGetByIdExtendedResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
+import org.telegram.messenger.MediaDataController;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
+
+import java.util.ArrayList;
 
 public class DTOConverters {
     public static TLRPC.TL_message VKMessageConverter(MessagesMessage message) {
@@ -26,15 +32,46 @@ public class DTOConverters {
         resMsg.out = message.getOut().getValue() == 1;
         resMsg.id = message.getId();
         resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
-        resMsg.flags = resMsg.flags | 256;
         resMsg.random_id = message.getRandomId();
         resMsg.dialog_id = isChat ? -message.getPeerId() : message.getPeerId();
+        if (message.getReplyMessage() != null) {
+            resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_REPLY;
+            resMsg.reply_to = new TLRPC.TL_messageReplyHeader();
+            resMsg.reply_to.reply_to_msg_id = message.getReplyMessage().getId();
+            resMsg.replyMessage = VKForeignMessageConverter(message.getReplyMessage());
+        }
         if (isChat)
             resMsg.peer_id.chat_id = message.getPeerId();
         else
             resMsg.peer_id.user_id = message.getPeerId();
         resMsg.from_id = makeVk(new TLRPC.TL_peerUser());
         resMsg.from_id.user_id = message.getFromId().getValue();
+        resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_FROM_ID;
+        return resMsg;
+    }
+
+    public static TLRPC.TL_message VKForeignMessageConverter(MessagesForeignMessage message) {
+        TLRPC.TL_message resMsg = makeVk(new TLRPC.TL_message());
+        boolean isChat = message.getPeerId() >= 2000000000;
+        resMsg.message = message.getText();
+        resMsg.date = message.getDate();
+        resMsg.id = message.getId();
+        resMsg.out = message.getFromId() == VK.getUserId();
+        resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
+        resMsg.dialog_id = isChat ? -message.getPeerId() : message.getPeerId();
+        if (message.getReplyMessage() != null) {
+            resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_REPLY;
+            resMsg.reply_to = new TLRPC.TL_messageReplyHeader();
+            resMsg.reply_to.reply_to_msg_id = message.getReplyMessage().getId();
+            resMsg.replyMessage = VKForeignMessageConverter(message.getReplyMessage());
+        }
+        if (isChat)
+            resMsg.peer_id.chat_id = message.getPeerId();
+        else
+            resMsg.peer_id.user_id = message.getPeerId();
+        resMsg.from_id = makeVk(new TLRPC.TL_peerUser());
+        resMsg.from_id.user_id = message.getFromId().getValue();
+        resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_FROM_ID;
         return resMsg;
     }
 
@@ -48,7 +85,7 @@ public class DTOConverters {
         ret_dialog.notify_settings = new TLRPC.TL_peerNotifySettings();
         ret_dialog.read_inbox_max_id = conv.getInRead();
         ret_dialog.read_outbox_max_id = conv.getOutRead();
-        if (conv.getPushSettings() != null){
+        if (conv.getPushSettings() != null) {
             ret_dialog.notify_settings.mute_until = conv.getPushSettings().getDisabledForever() ? Integer.MAX_VALUE : 0;
             ret_dialog.notify_settings.flags = conv.getPushSettings().getDisabledForever() ? ret_dialog.notify_settings.flags | 4 : 0;
         }
@@ -80,17 +117,6 @@ public class DTOConverters {
         return resConv;
     }
 
-
-    public static TLRPC.TL_chat VKConversationConverter(MessagesChat conv) {
-        TLRPC.TL_chat retChat = makeVk(new TLRPC.TL_chat());
-        retChat.title = conv.getTitle();
-        retChat.participants_count = conv.getMembersCount();
-        retChat.id = conv.getId();
-        retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
-        retChat.version = 0;
-        return retChat;
-    }
-
     public static TLRPC.TL_user VKUserConverter(UsersUserFull user) {
         TLRPC.TL_user retUser = makeVk(new TLRPC.TL_user());
         retUser.id = user.getId().getValue();
@@ -103,7 +129,7 @@ public class DTOConverters {
         return retUser;
     }
 
-    public static TLRPC.TL_userFull VKFullUserConverter(UsersUserFull user){
+    public static TLRPC.TL_userFull VKFullUserConverter(UsersUserFull user) {
         TLRPC.TL_userFull retUser = new TLRPC.TL_userFull();
         retUser.about = user.getStatus();
         retUser.blocked = user.getBlacklistedByMe().getValue() == 1;
@@ -123,7 +149,9 @@ public class DTOConverters {
             if (res.second != null) {
                 TGDialogs.chats.add(res.second);
             }
-            TGDialogs.messages.add(DTOConverters.VKMessageConverter(msg.getLastMessage()));
+            TLRPC.Message convMsg = DTOConverters.VKMessageConverter(msg.getLastMessage());
+            TGDialogs.messages.add(convMsg);
+            if (convMsg.replyMessage != null) AddAllReplies(TGDialogs.messages, convMsg);
         }
         for (UsersUserFull user : VKDialogs.getProfiles()) {
             TGDialogs.users.add(DTOConverters.VKUserConverter(user));
@@ -135,7 +163,9 @@ public class DTOConverters {
         TLRPC.messages_Messages res = new TLRPC.TL_messages_messagesSlice();
         res.count = messages.getCount();
         for (MessagesMessage message : messages.getItems()) {
-            res.messages.add(VKMessageConverter(message));
+            TLRPC.Message convMsg = VKMessageConverter(message);
+            res.messages.add(convMsg);
+            if (convMsg.replyMessage != null) AddAllReplies(res.messages, convMsg);
         }
         if (messages.getProfiles() != null)
             for (UsersUserFull user : messages.getProfiles()) {
@@ -143,9 +173,15 @@ public class DTOConverters {
             }
         if (messages.getConversations() != null)
             for (MessagesConversation conversation : messages.getConversations()) {
-                VKConversationConverter(new MessagesConversationWithMessage(conversation, null));
+                TLRPC.TL_chat chat = VKConversationConverter(new MessagesConversationWithMessage(conversation, null)).second;
+                if (chat != null) res.chats.add(chat);
             }
         return res;
+    }
+
+    public static TLRPC.messages_Messages VKMessagesResponseConverter(MessagesGetByConversationMessageIdExtendedResponse messages) {
+        return DTOConverters.VKMessagesResponseConverter(new MessagesGetHistoryExtendedResponse(messages.getCount(),
+                messages.getItems(), messages.getProfiles(), messages.getGroups(), null));
     }
 
     public static TLRPC.messages_Messages VKMessagesResponseConverter(MessagesGetLongPollHistoryResponse messages) {
@@ -156,6 +192,14 @@ public class DTOConverters {
                 messages.getGroups(),
                 messages.getConversations()
         ));
+    }
+
+    public static void AddAllReplies(ArrayList<TLRPC.Message> arrayList, TLRPC.Message message) {
+        TLRPC.Message curMsg = message;
+        while (curMsg.replyMessage != null) {
+            arrayList.add(curMsg.replyMessage);
+            curMsg = message.replyMessage;
+        }
     }
 
     public static <T extends TLObject> T makeVk(T object) {

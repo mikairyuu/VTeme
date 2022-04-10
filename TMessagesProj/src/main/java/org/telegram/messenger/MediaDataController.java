@@ -34,11 +34,19 @@ import android.text.TextUtils;
 import android.text.style.CharacterStyle;
 import android.util.SparseArray;
 
+import androidx.annotation.NonNull;
 import androidx.collection.LongSparseArray;
 import androidx.core.content.pm.ShortcutInfoCompat;
 import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.drawable.IconCompat;
 
+import com.vk.api.sdk.VK;
+import com.vk.api.sdk.VKApiCallback;
+import com.vk.sdk.api.messages.MessagesService;
+import com.vk.sdk.api.messages.dto.MessagesGetByConversationMessageIdExtendedResponse;
+import com.vk.sdk.api.messages.dto.MessagesGetByIdExtendedResponse;
+
+import org.lightfire.vteme.vkapi.DTOConverters;
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.SQLite.SQLiteDatabase;
 import org.telegram.SQLite.SQLiteException;
@@ -46,6 +54,7 @@ import org.telegram.SQLite.SQLitePreparedStatement;
 import org.telegram.messenger.support.SparseLongArray;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
+import org.telegram.tgnet.RequestDelegate;
 import org.telegram.tgnet.SerializedData;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
@@ -61,6 +70,7 @@ import org.telegram.ui.LaunchActivity;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -4342,6 +4352,7 @@ public class MediaDataController extends BaseController {
                     broadcastReplyMessages(result, replyMessageOwners, users, chats, dialogId, true);
 
                     if (!dialogReplyMessagesIds.isEmpty()) {
+                        TLRPC.InputPeer peer = getMessagesController().getInputPeer(dialogId);
                         for (int a = 0, N = dialogReplyMessagesIds.size(); a < N; a++) {
                             long channelId = dialogReplyMessagesIds.keyAt(a);
                             if (channelId != 0) {
@@ -4368,15 +4379,23 @@ public class MediaDataController extends BaseController {
                                     }
                                 });
                             } else {
-                                TLRPC.TL_messages_getMessages req = new TLRPC.TL_messages_getMessages();
-                                req.id = dialogReplyMessagesIds.valueAt(a);
-                                getConnectionsManager().sendRequest(req, (response, error) -> {
+                                int finalA = a;
+                                RequestDelegate resCallback = (response, error) -> {
                                     if (error == null) {
                                         TLRPC.messages_Messages messagesRes = (TLRPC.messages_Messages) response;
                                         for (int i = 0; i < messagesRes.messages.size(); i++) {
                                             TLRPC.Message message = messagesRes.messages.get(i);
                                             if (message.dialog_id == 0) {
                                                 message.dialog_id = dialogId;
+                                            }
+                                        }
+                                        if (peer.isVK) {
+                                            SparseArray<ArrayList<MessageObject>> sparseArray = replyMessageOwners.get(dialogId);
+                                            ArrayList<Integer> ids = dialogReplyMessagesIds.valueAt(finalA);
+                                            for (int i = 0; i < ids.size(); i++) {
+                                                int ind = sparseArray.indexOfKey(ids.get(i));
+                                                sparseArray.put(messagesRes.messages.get(i).id, sparseArray.valueAt(ind));
+                                                sparseArray.removeAt(ind);
                                             }
                                         }
                                         ImageLoader.saveMessagesThumbs(messagesRes.messages);
@@ -4387,8 +4406,25 @@ public class MediaDataController extends BaseController {
                                     if (callback != null) {
                                         AndroidUtilities.runOnUIThread(callback);
                                     }
-                                });
-                            }
+                                };
+                                if (peer.isVK) {
+                                    VK.execute(new MessagesService().messagesGetByConversationMessageIdExtended((int) (peer instanceof TLRPC.TL_inputPeerChat ? -dialogId : dialogId),
+                                            dialogReplyMessagesIds.valueAt(a), null, null), new VKApiCallback<MessagesGetByConversationMessageIdExtendedResponse>() {
+                                        @Override
+                                        public void success(MessagesGetByConversationMessageIdExtendedResponse messagesGetByIdExtendedResponse) {
+                                            resCallback.run(DTOConverters.VKMessagesResponseConverter(messagesGetByIdExtendedResponse), null);
+                                        }
+
+                                        @Override
+                                        public void fail(@NonNull Exception e) {
+                                            resCallback.run(null, new TLRPC.TL_error());
+                                        }
+                                    });
+                                } else {
+                                    TLRPC.TL_messages_getMessages req = new TLRPC.TL_messages_getMessages();
+                                    req.id = dialogReplyMessagesIds.valueAt(a);
+                                    getConnectionsManager().sendRequest(req, resCallback);
+                            }}
                         }
                     } else {
                         if (callback != null) {

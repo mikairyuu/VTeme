@@ -5315,22 +5315,23 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 }
             };
 
-            if(req instanceof TLRPC.TL_messages_editMessage){
+            if (req instanceof TLRPC.TL_messages_editMessage) {
                 TLRPC.TL_messages_editMessage curReq = (TLRPC.TL_messages_editMessage) req;
                 VK.execute(new MessagesService().messagesEdit((int) peer_id, curReq.message, null,
                         null,null,null,null,null,null,
-                        null, curReq.id, null,null,null),new VKApiCallback<BaseBoolInt>(){
+                        null, curReq.id, null,null,null), new VKApiCallback<BaseBoolInt>() {
                     @Override
                     public void success(BaseBoolInt baseBoolInt) { callback.success(baseBoolInt.getValue()); }
                     @Override
                     public void fail(@NonNull Exception e) { callback.fail(e); }
                 });
-            }else if(req instanceof TLRPC.TL_messages_sendMessage){
-            VK.execute(new MessagesService().messagesSend(null, (int) newMsgObj.random_id, (int) peer_id,
-                    null,null, isChat ? (int) peer_id : null, null, newMsgObj.message,
-                    null, null, "", null, null, null, null,
-                    null, null, null, null, null, null,
-                    null, null, null),callback);}
+            } else if (req instanceof TLRPC.TL_messages_sendMessage) {
+                TLRPC.TL_messages_sendMessage curReq = (TLRPC.TL_messages_sendMessage) req;
+                VK.execute(new MessagesService().messagesSend(null, (int) newMsgObj.random_id, (int) peer_id,
+                        null,null, isChat ? (int) peer_id : null, null, newMsgObj.message,
+                        null, null, "", curReq.reply_to_msg_id, null, null, null,
+                        null, null, null, null, null, null,
+                        null, null, null), callback);}
         } else {
         newMsgObj.reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
             if (error != null && (req instanceof TLRPC.TL_messages_sendMedia || req instanceof TLRPC.TL_messages_editMessage) && FileRefController.isFileRefError(error.text)) {

@@ -221,12 +221,17 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         newMsg.date = update.extraFields!!.timestamp!!
                         newMsg.message = update.extraFields!!.text
                         newMsg.from_id = TLRPC.TL_peerUser().apply { user_id = from_id }
+                        newMsg.flags = newMsg.flags or TLRPC.MESSAGE_FLAG_HAS_FROM_ID
                         newMsg.peer_id = if (isChat) TLRPC.TL_peerChat().apply { chat_id = peerId }
                         else TLRPC.TL_peerUser().apply { user_id = peerId }
                         newMsg.id = update.message_id
                         newMsg.dialog_id = if (isChat) -peerId else peerId
                         newMsg.unread = (update.flags and 1) != 0
-                        newMsg.flags = newMsg.flags or 256
+                        if(update.extraFields!!.attachments?.reply_to !== null){
+                            newMsg.flags = newMsg.flags or TLRPC.MESSAGE_FLAG_REPLY
+                            newMsg.reply_to = TLRPC.TL_messageReplyHeader()
+                            newMsg.reply_to.reply_to_msg_id = update.extraFields!!.attachments?.reply_to!!
+                        }
 
                         AndroidUtilities.runOnUIThread {
                             messagesController.updateInterfaceWithVKMessages(

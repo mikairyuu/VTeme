@@ -167,7 +167,7 @@ object UpdateDeserializeUtils {
                             PushSettingsChanged(
                                 obj["peer_id"].asInt,
                                 obj["sound"].asInt,
-                                if(obj["disabled_until"].isJsonNull) null else obj["disabled_until"].asInt,
+                                if (obj["disabled_until"].isJsonNull) null else obj["disabled_until"].asInt,
                             )
                         )
                     } else {
@@ -190,12 +190,15 @@ object UpdateDeserializeUtils {
         val fieldCount = array.size() - startIndex
         if (fieldCount != 0) {
             if (fieldCount > 1) {
-                val attachments = array[startIndex + 3].asJsonObject
+                val attachments =
+                    // Thx for the greatest API ever, VK
+                    array[startIndex + if (array[startIndex + 3].asJsonObject.has("title"))
+                        4 else 3].asJsonObject
                 return MessageExtraFields(
                     array[startIndex].asInt,
                     array[startIndex + 1].asInt,
                     array[startIndex + 2].asString,
-                    MessageAttachments(if (attachments.has("from")) attachments.get("from").asInt else null),
+                    parseMessageAttachments(attachments),
                     0
                 )
             } else {
@@ -210,6 +213,14 @@ object UpdateDeserializeUtils {
         } else {
             return null
         }
+    }
+
+    private fun parseMessageAttachments(obj: JsonObject): MessageAttachments {
+        return MessageAttachments(
+            if (obj.has("from")) obj["from"].asInt else null,
+            if (obj.has("reply"))
+                JsonParser.parseString(obj["reply"].asString).getAsJsonObject()["conversation_message_id"].asInt else null
+        )
     }
 }
 
