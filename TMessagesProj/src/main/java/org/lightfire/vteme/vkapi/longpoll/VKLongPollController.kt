@@ -22,6 +22,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     var cache: MessagesGetLongPollHistoryResponse? = null
     private var vkKey: String? = null
     private var vkServer: String? = null
+    private var lastTs = messagesStorage.vkLastTs
     private var inited = false
 
     private val okhttpClient: OkHttpClient by lazy { OkHttpClient() }
@@ -44,6 +45,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     vkServer = result.server
                     vkKey = result.key
                     if (firstTime) {
+                        lastTs = result.ts
                         messagesStorage.saveVKDiffParams(
                             result.ts,
                             result.pts!!,
@@ -57,6 +59,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         getHistoryDiff(result.pts!!) {
                             connectionsManager.setIsUpdating(false)
                             if (it) {
+                                lastTs = result.ts
                                 messagesStorage.saveVKDiffParams(
                                     result.ts,
                                     result.pts!!,
@@ -78,7 +81,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
             okhttpClient.dispatcher.idleCallback = Runnable {
                 okhttpClient.newCall(
                     Request.Builder()
-                        .url("https://${vkServer}?act=a_check&key=${vkKey}&ts=${messagesStorage.vkLastTs}&wait=25&mode=${32 + 8 + 2}&version=3")
+                        .url("https://${vkServer}?act=a_check&key=${vkKey}&ts=${lastTs}&wait=25&mode=${32 + 8 + 2}&version=3")
                         .build()
                 ).enqueue(object : Callback {
                     override fun onResponse(call: Call, response: Response) {
@@ -277,6 +280,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                 stopPolling()
                 getHistoryDiff(updates.pts) {
                     if (it) {
+                        lastTs = updates.ts
                         messagesStorage.saveVKDiffParams(
                             updates.ts,
                             updates.pts,
@@ -286,6 +290,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     }
                 }
             } else {
+                lastTs = updates.ts
                 messagesStorage.saveVKDiffParams(
                     updates.ts,
                     updates.pts,
