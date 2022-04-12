@@ -56,15 +56,9 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         if (onSuccessInit) startPolling()
                     } else {
                         connectionsManager.setIsUpdating(true)
-                        getHistoryDiff(result.pts!!) {
+                        getHistoryDiff(result.ts, result.pts!!) {
                             connectionsManager.setIsUpdating(false)
                             if (it) {
-                                lastTs = result.ts
-                                messagesStorage.saveVKDiffParams(
-                                    result.ts,
-                                    result.pts!!,
-                                    messagesStorage.vkLastMaxMsgId
-                                )
                                 startPolling()
                             }
                         }
@@ -283,34 +277,33 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                 )
             if (missingData) {
                 stopPolling()
-                getHistoryDiff(updates.pts) {
+                getHistoryDiff(updates.ts, updates.pts) {
                     if (it) {
-                        lastTs = updates.ts
-                        messagesStorage.saveVKDiffParams(
-                            updates.ts,
-                            updates.pts,
-                            messagesStorage.vkLastMaxMsgId
-                        )
                         startPolling()
                     }
                 }
             } else {
-                lastTs = updates.ts
-                messagesStorage.saveVKDiffParams(
-                    updates.ts,
-                    updates.pts,
-                    messagesStorage.vkLastMaxMsgId
-                )
+                processNewDiffParams(updates.ts, updates.pts, messagesStorage.vkLastMaxMsgId)
             }
         }
     }
 
+    fun processNewDiffParams(ts: Int, pts: Int, vkLastMaxMsgId: Int) {
+        lastTs = ts
+        messagesStorage.saveVKDiffParams(
+            ts,
+            pts,
+            vkLastMaxMsgId
+        )
+    }
+
     fun getHistoryDiff(
-        newPts: Int = 0,
+        ts: Int,
+        pts: Int,
         onComplete: ((success: Boolean) -> Unit)? = null,
     ) {
         val limit = if (ApplicationLoader.isConnectedOrConnectingToWiFi()) 3000 else 700
-        if (newPts - messagesStorage.vkLastPts > limit && newPts != 0) {
+        if (pts - messagesStorage.vkLastPts > limit && pts != 0) {
             VTemeController.getInstance(currentAccount)!!.loadVKMessages {
                 getInstance(0)!!.initLongPoll(true, true)
             }
@@ -473,9 +466,10 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                         )
                                     }
                                 }
-                                onComplete?.invoke(true)
                             }
                         }
+                        processNewDiffParams(ts, pts, messagesStorage.vkLastMaxMsgId)
+                        onComplete?.invoke(true)
                     }
 
                     override fun fail(e: Exception) {
