@@ -190,15 +190,11 @@ object UpdateDeserializeUtils {
         val fieldCount = array.size() - startIndex
         if (fieldCount != 0) {
             if (fieldCount > 1) {
-                val attachments =
-                    // Thx for the greatest API ever, VK
-                    array[startIndex + if (array[startIndex + 3].asJsonObject.has("title"))
-                        4 else 3].asJsonObject
                 return MessageExtraFields(
                     array[startIndex].asInt,
                     array[startIndex + 1].asInt,
                     array[startIndex + 2].asString,
-                    parseMessageAttachments(attachments),
+                    parseMessageAttachments(startIndex, array),
                     0
                 )
             } else {
@@ -215,11 +211,19 @@ object UpdateDeserializeUtils {
         }
     }
 
-    private fun parseMessageAttachments(obj: JsonObject): MessageAttachments {
+    private fun parseMessageAttachments(startIndex: Int, array: JsonArray): MessageAttachments {
+        val dataObj =
+            if (array[startIndex + 3].asJsonObject.has("title") || array[startIndex + 3]
+                    .asJsonObject.has("from")
+            ) array[startIndex + 3].asJsonObject else null
+        val attachObj =
+            if (dataObj != null) array[startIndex + 4].asJsonObject else array[startIndex + 3].asJsonObject
         return MessageAttachments(
-            if (obj.has("from")) obj["from"].asInt else null,
-            if (obj.has("reply"))
-                JsonParser.parseString(obj["reply"].asString).getAsJsonObject()["conversation_message_id"].asInt else null
+            if (dataObj?.has("from") == true) dataObj["from"].asInt else null,
+            if (attachObj.has("reply"))
+                JsonParser.parseString(attachObj["reply"].asString)
+                    .asJsonObject["conversation_message_id"].asInt else null,
+            attachObj.has("fwd"),
         )
     }
 }

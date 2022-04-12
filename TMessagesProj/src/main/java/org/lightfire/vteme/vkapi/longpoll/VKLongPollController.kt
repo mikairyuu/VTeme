@@ -207,6 +207,10 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                 when (update) {
                     is NewMessageAdded -> {
                         if (update.extraFields == null) return
+                        if (update.extraFields!!.attachments?.has_forwards == true) {
+                            missingData = true
+                            break@outer
+                        }
                         val newMsg = DTOConverters.makeVk(TLRPC.TL_message())
                         val peerId = update.extraFields!!.peer_id.toLong()
                         val isChat = peerId >= 2000000000
@@ -230,10 +234,11 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                         newMsg.id = update.message_id
                         newMsg.dialog_id = if (isChat) -peerId else peerId
                         newMsg.unread = (update.flags and 1) != 0
-                        if(update.extraFields!!.attachments?.reply_to !== null){
+                        if (update.extraFields!!.attachments?.reply_to !== null) {
                             newMsg.flags = newMsg.flags or TLRPC.MESSAGE_FLAG_REPLY
                             newMsg.reply_to = TLRPC.TL_messageReplyHeader()
-                            newMsg.reply_to.reply_to_msg_id = update.extraFields!!.attachments?.reply_to!!
+                            newMsg.reply_to.reply_to_msg_id =
+                                update.extraFields!!.attachments?.reply_to!!
                         }
 
                         AndroidUtilities.runOnUIThread {
@@ -362,8 +367,10 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                 if (result.messages?.items?.isEmpty() == false) {
                                     val tg_msg = arrayListOf<TLRPC.Message>()
                                     for (msg in result.messages!!.items!!)
-                                        if (msg.deleted?.value != 1) tg_msg.add(
-                                            DTOConverters.VKMessageConverter(msg)
+                                        if (msg.deleted?.value != 1) DTOConverters.HandleMessage(
+                                            tg_msg,
+                                            msg,
+                                            result.profiles
                                         )
 
                                     val messages = LongSparseArray<ArrayList<MessageObject>>()
