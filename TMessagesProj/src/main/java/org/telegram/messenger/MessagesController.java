@@ -2206,8 +2206,8 @@ public class MessagesController extends BaseController implements NotificationCe
             } else {
                 inputPeer = new TLRPC.TL_inputPeerChat();
                 inputPeer.chat_id = -id;
+                inputPeer.isVK = chat.isVK;
             }
-            inputPeer.isVK = chat.isVK;
         } else {
             TLRPC.User user = getUser(id);
             inputPeer = new TLRPC.TL_inputPeerUser();
