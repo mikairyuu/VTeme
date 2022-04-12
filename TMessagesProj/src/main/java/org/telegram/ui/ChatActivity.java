@@ -22946,6 +22946,12 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         if (forwardingMessage == null && selectedMessagesIds[0].size() == 0 && selectedMessagesIds[1].size() == 0) {
             return;
         }
+        if (selectedMessagesIds[0].valueAt(0).messageOwner.isVK && !getMessagesController().getInputPeer(dids.get(0)).isVK) {
+            AlertsCreator.createSimpleAlert(fragment.getParentActivity(), LocaleController.getString(R.string.AppName),
+                    LocaleController.getString(R.string.CannotForwardAlert)).create().show();
+            return;
+        }
+
         ArrayList<MessageObject> fmessages = new ArrayList<>();
         if (forwardingMessage != null) {
             if (forwardingMessageGroup != null) {

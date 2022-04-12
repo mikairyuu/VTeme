@@ -5119,4 +5119,5 @@
     <string name="ReportChatIllegalDrugs">Illegal Drugs</string>
     <string name="ReportChatPersonalDetails">Personal Details</string>
     <string name="PrivacyPhoneInfo4">This public link opens a chat with you:</string>
+    <string name="CannotForwardAlert">Sorry, but in compliance with VK API usage rules, you can not forward VK messages into TG chats.</string>
 </resources>
