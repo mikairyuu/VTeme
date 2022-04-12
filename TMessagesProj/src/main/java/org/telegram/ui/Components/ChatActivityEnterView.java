@@ -486,6 +486,7 @@ public class ChatActivityEnterView extends BlurredFrameLayout implements Notific
     private boolean messageWebPageSearch = true;
     private ChatActivityEnterViewDelegate delegate;
     private TrendingStickersAlert trendingStickersAlert;
+    public boolean isVK = false;
 
     private TLRPC.TL_document audioToSend;
     private String audioToSendPath;
@@ -4158,6 +4159,7 @@ public class ChatActivityEnterView extends BlurredFrameLayout implements Notific
 
     public void setDialogId(long id, int account) {
         dialog_id = id;
+        isVK = MessagesController.getInstance(account).getInputPeer(dialog_id).isVK;
         if (currentAccount != account) {
             NotificationCenter.getInstance(currentAccount).onAnimationFinish(notificationsIndex);
             NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.recordStarted);
@@ -4561,9 +4563,11 @@ public class ChatActivityEnterView extends BlurredFrameLayout implements Notific
                 }
             }
         }
-        if (processSendingText(message, notify, scheduleDate)) {
-            if (delegate.hasForwardingMessages() || (scheduleDate != 0 && !isInScheduleMode()) || isInScheduleMode()) {
-                messageEditText.setText("");
+        boolean forwarding = delegate.hasForwardingMessages();
+        boolean doingVKForward = isVK && forwarding;
+        if (doingVKForward || processSendingText(message, notify, scheduleDate)) {
+            if (forwarding || (scheduleDate != 0 && !isInScheduleMode()) || isInScheduleMode()) {
+                if(!doingVKForward) messageEditText.setText("");
                 if (delegate != null) {
                     delegate.onMessageSend(message, notify, scheduleDate);
                 }

@@ -11718,6 +11718,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             if (forwardingMessages != null) {
                 ArrayList<MessageObject> messagesToForward = new ArrayList<>();
                 forwardingMessages.getSelectedMessages(messagesToForward);
+                if (chatActivityEnterView.isVK) {
+                    TLRPC.TL_message msg = new TLRPC.TL_message();
+                    msg.message = chatActivityEnterView.getFieldText().toString();
+                    messagesToForward.add(new MessageObject(currentAccount, msg, false, false));
+                }
                 forwardMessages(messagesToForward, forwardingMessages.hideForwardSendersName, forwardingMessages.hideCaption, notify, scheduleDate != 0 && scheduleDate != 0x7ffffffe ? scheduleDate + 1 : scheduleDate);
                 forwardingMessages = null;
             }

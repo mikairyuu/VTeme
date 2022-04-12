@@ -1690,6 +1690,17 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
             ArrayList<Integer> ids = new ArrayList<>();
             LongSparseArray<TLRPC.Message> messagesByRandomIds = new LongSparseArray<>();
             TLRPC.InputPeer inputPeer = getMessagesController().getInputPeer(peer);
+            if (inputPeer.isVK) {
+                for (int i = 0; i < messages.size() - 1; i++){
+                    ids.add(messages.get(i).messageOwner.id);
+                }
+                VK.execute(new MessagesService().messagesSend(null, getNextRandomIntId(), (int) peer,
+        null,null,null,null, messages.get(messages.size() - 1).messageOwner.message,null,
+        null,null,null, ids,null,null,null,null,null,
+        null,null,null,null,null,null), null);
+                return 0;
+            }
+
             long lastDialogId = 0;
             final boolean toMyself = peer == myId;
             long lastGroupedId;
@@ -5327,6 +5338,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 });
             } else if (req instanceof TLRPC.TL_messages_sendMessage) {
                 TLRPC.TL_messages_sendMessage curReq = (TLRPC.TL_messages_sendMessage) req;
+                newMsgObj.random_id = getNextRandomIntId();
                 VK.execute(new MessagesService().messagesSend(null, (int) newMsgObj.random_id, (int) peer_id,
                         null,null, isChat ? (int) peer_id : null, null, newMsgObj.message,
                         null, null, "", curReq.reply_to_msg_id, null, null, null,
@@ -5869,6 +5881,14 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         long val = 0;
         while (val == 0) {
             val = Utilities.random.nextLong();
+        }
+        return val;
+    }
+
+    protected int getNextRandomIntId() {
+        int val = 0;
+        while (val == 0) {
+            val = Utilities.random.nextInt();
         }
         return val;
     }
