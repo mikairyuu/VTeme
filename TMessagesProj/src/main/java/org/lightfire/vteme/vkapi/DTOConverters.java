@@ -13,6 +13,7 @@ import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
+import com.vk.sdk.api.messages.dto.MessagesMessageAction;
 import com.vk.sdk.api.messages.dto.MessagesMessageAttachment;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
@@ -23,8 +24,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class DTOConverters {
-    private static TLRPC.TL_message VKMessageConverter(MessagesMessage message) {
-        TLRPC.TL_message resMsg = makeVk(new TLRPC.TL_message());
+    private static TLRPC.Message VKMessageConverter(MessagesMessage message) {
+        TLRPC.Message resMsg;
+        if (message.getAction() != null) {
+            resMsg = makeVk(new TLRPC.TL_messageService());
+            resMsg.action = VKActionConverter(message.getAction());
+        } else {
+            resMsg = makeVk(new TLRPC.TL_message());
+        }
+
         boolean isChat = message.getPeerId() >= 2000000000;
         resMsg.message = message.getText();
         resMsg.date = message.getDate();
@@ -33,6 +41,7 @@ public class DTOConverters {
         resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
         resMsg.random_id = message.getRandomId();
         resMsg.dialog_id = isChat ? -message.getPeerId() : message.getPeerId();
+
         if (message.getReplyMessage() != null && message.getReplyMessage().getId() != null) {
             resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_REPLY;
             resMsg.reply_to = new TLRPC.TL_messageReplyHeader();
@@ -47,6 +56,49 @@ public class DTOConverters {
         resMsg.from_id.user_id = message.getFromId().getValue();
         resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_FROM_ID;
         return resMsg;
+    }
+
+    private static TLRPC.MessageAction VKActionConverter(MessagesMessageAction action) {
+        TLRPC.MessageAction retAction = null;
+        String actionType = action.getType();
+        switch (actionType) {
+            case "chat_photo_update":
+                retAction = new TLRPC.TL_messageActionChatEditPhoto();
+                retAction.photo = new TLRPC.TL_photo();
+                break;
+            case "chat_photo_remove":
+                retAction = new TLRPC.TL_messageActionChatDeletePhoto();
+                break;
+            case "chat_create":
+                retAction = new TLRPC.TL_messageActionChatCreate();
+                retAction.title = action.getText();
+                retAction.users = new ArrayList<>();
+                break;
+            case "chat_title_update":
+                retAction = new TLRPC.TL_messageActionChatEditTitle();
+                retAction.title = action.getText();
+                break;
+            case "chat_invite_user":
+                retAction = new TLRPC.TL_messageActionCustomAction();
+                retAction.message = action.getMessage();
+                break;
+            case "chat_kick_user":
+                retAction = new TLRPC.TL_messageActionChatDeleteUser();
+                retAction.user_id = action.getMemberId().getValue();
+                break;
+            case "chat_pin_message":
+                retAction = new TLRPC.TL_messageActionPinMessage();
+                break;
+            case "chat_unpin_message":
+                retAction = new TLRPC.TL_messageActionCustomAction();
+                retAction.message = action.getMessage();
+                break;
+            case "chat_invite_user_by_link":
+                retAction = new TLRPC.TL_messageActionChatJoinedByLink();
+                retAction.user_id = action.getMemberId().getValue();
+                break;
+        }
+        return retAction;
     }
 
     private static TLRPC.TL_message VKForeignMessageConverter(MessagesForeignMessage message, MessagesMessage fwdOwner) {
