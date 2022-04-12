@@ -104,7 +104,7 @@ public class DTOConverters {
             ret_dialog.peer = makeVk(new TLRPC.TL_peerChat());
             ret_dialog.peer.chat_id = conv.getPeer().getId();
             retChat.title = conv.getChatSettings().getTitle();
-            retChat.participants_count = conv.getChatSettings().getMembersCount();
+            retChat.participants_count = conv.getChatSettings().getMembersCount() != null ? conv.getChatSettings().getMembersCount() : 0;
             retChat.id = ret_dialog.id;
             ret_dialog.id = -ret_dialog.id;
             retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
