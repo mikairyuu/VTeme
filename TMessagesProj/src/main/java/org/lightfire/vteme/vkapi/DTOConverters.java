@@ -2,8 +2,6 @@ package org.lightfire.vteme.vkapi;
 
 import android.util.Pair;
 
-import androidx.annotation.Nullable;
-
 import com.vk.api.sdk.VK;
 import com.vk.sdk.api.messages.dto.MessagesConversation;
 import com.vk.sdk.api.messages.dto.MessagesConversationWithMessage;
@@ -22,6 +20,7 @@ import org.telegram.tgnet.TLRPC;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class DTOConverters {
     private static TLRPC.Message VKMessageConverter(MessagesMessage message) {
@@ -274,7 +273,8 @@ public class DTOConverters {
         StringBuilder textBuilder = new StringBuilder(message.getText());
         if (textBuilder.length() != 0) textBuilder.append('\n');
         if (!message.getText().isEmpty()) {
-            addFwdDelimeter(textBuilder, users.stream().filter(x -> x.getId().getValue() == message.getPeerId()).findFirst().get());
+            Optional<UsersUserFull> filter = users.stream().filter(x -> x.getId().getValue() == message.getPeerId()).findFirst();
+            filter.ifPresent(usersUserFull -> addFwdDelimeter(textBuilder, usersUserFull));
         }
         List<MessagesForeignMessage> fwdMsgs = message.getFwdMessages();
         int cnt = message.getFwdMessages().size();
