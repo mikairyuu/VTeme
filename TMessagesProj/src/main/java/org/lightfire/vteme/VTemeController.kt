@@ -8,10 +8,32 @@ import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse
 import org.lightfire.vteme.utils.UIUtil.runOnIoDispatcher
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.VKLongPollController
+import org.telegram.messenger.AccountInstance
+import org.telegram.messenger.AndroidUtilities
 import org.telegram.messenger.BaseController
+import org.telegram.messenger.NotificationCenter
+import org.telegram.messenger.NotificationCenter.NotificationCenterDelegate
+import org.telegram.tgnet.ConnectionsManager.*
 import java.util.*
 
-class VTemeController(num: Int) : BaseController(num) {
+class VTemeController(val num: Int) : BaseController(num), NotificationCenterDelegate {
+
+    var state = AccountInstance.getInstance(num).connectionsManager.connectionState
+
+    init {
+        AndroidUtilities.runOnUIThread {
+            notificationCenter.addObserver(
+                this,
+                NotificationCenter.didUpdateConnectionState
+            )
+        }
+    }
+
+    fun initPolling() {
+        if (state != ConnectionStateWaitingForNetwork && state != ConnectionStateConnecting) {
+            VKLongPollController.getInstance(num)!!.initLongPoll(true)
+        }
+    }
 
     fun loadVKMessages(onSuccess: Runnable? = null) {
         execute(MessagesService().messagesGetConversations(
@@ -53,6 +75,19 @@ class VTemeController(num: Int) : BaseController(num) {
                 }
             }
             return localInstance
+        }
+    }
+
+    override fun didReceivedNotification(id: Int, account: Int, vararg args: Any?) {
+        when (id) {
+            NotificationCenter.didUpdateConnectionState -> {
+                state = AccountInstance.getInstance(account).connectionsManager.connectionState
+                if (state == ConnectionStateWaitingForNetwork) {
+                    VKLongPollController.getInstance(account)!!.stopPolling()
+                } else if (state == ConnectionStateConnected) {
+                    VKLongPollController.getInstance(account)!!.startPolling()
+                }
+            }
         }
     }
 }

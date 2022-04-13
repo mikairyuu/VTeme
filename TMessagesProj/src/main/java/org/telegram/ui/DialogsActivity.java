@@ -82,7 +82,7 @@ import androidx.recyclerview.widget.LinearSmoothScrollerCustom;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager.widget.ViewPager;
 
-import org.lightfire.vteme.vkapi.longpoll.VKLongPollController;
+import org.lightfire.vteme.VTemeController;
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
@@ -1910,7 +1910,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             MessagesController messagesController = accountInstance.getMessagesController();
             messagesController.loadGlobalNotificationsSettings();
             messagesController.loadDialogs(0, 0, 100, true);
-            Utilities.stageQueue.postRunnable(() -> VKLongPollController.Companion.getInstance(currentAccount).initLongPoll(true, false));
+            Utilities.stageQueue.postRunnable(() -> VTemeController.Companion.getInstance(currentAccount).initPolling());
             messagesController.loadHintDialogs();
             messagesController.loadUserInfo(accountInstance.getUserConfig().getCurrentUser(), false, 0);
             accountInstance.getContactsController().checkInviteText();

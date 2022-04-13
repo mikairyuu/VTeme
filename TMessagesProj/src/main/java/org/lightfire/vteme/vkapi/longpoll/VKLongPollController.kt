@@ -70,7 +70,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     }
 
     fun startPolling() {
-        if (!inited) return
+        if (!inited) initLongPoll(true)
         if (okhttpClient.dispatcher.idleCallback == null) {
             okhttpClient.dispatcher.idleCallback = Runnable {
                 okhttpClient.newCall(
