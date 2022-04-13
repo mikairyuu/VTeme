@@ -79,8 +79,9 @@ public class DTOConverters {
                 retAction.title = action.getText();
                 break;
             case "chat_invite_user":
-                retAction = new TLRPC.TL_messageActionCustomAction();
-                retAction.message = action.getMessage();
+                retAction = new TLRPC.TL_messageActionChatAddUser();
+                retAction.users = new ArrayList<>();
+                retAction.users.add(action.getMemberId().getValue());
                 break;
             case "chat_kick_user":
                 retAction = new TLRPC.TL_messageActionChatDeleteUser();

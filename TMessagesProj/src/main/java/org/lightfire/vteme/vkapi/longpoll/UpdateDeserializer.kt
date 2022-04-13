@@ -220,6 +220,7 @@ object UpdateDeserializeUtils {
             if (dataObj != null) array[startIndex + 4].asJsonObject else array[startIndex + 3].asJsonObject
         return MessageAttachments(
             if (dataObj?.has("from") == true) dataObj["from"].asInt else null,
+            if (dataObj?.has("source_act") == true) dataObj["source_act"].asString else null,
             if (attachObj.has("reply"))
                 JsonParser.parseString(attachObj["reply"].asString)
                     .asJsonObject["conversation_message_id"].asInt else null,

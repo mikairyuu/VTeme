@@ -16,6 +16,7 @@ data class MessageExtraFields(
 
 data class MessageAttachments(
     val from_id: Int?,
+    val source_act: String?,
     val reply_to: Int?,
     val has_forwards : Boolean,
     //TODO: fill the rest of attachment fields

@@ -205,6 +205,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             missingData = true
                             break@outer
                         }
+                        if (update.extraFields!!.attachments?.source_act != null) return
                         val newMsg = DTOConverters.makeVk(TLRPC.TL_message())
                         val peerId = update.extraFields!!.peer_id.toLong()
                         val isChat = peerId >= 2000000000
@@ -262,6 +263,12 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                                 from_id.user_id = update.users_ids[it].toLong()
                             })
                         }
+                    }
+
+                    is ChatInfoChanged -> {
+                        // Long poll for chat info is so awful that doing diff right away is not such a bad idea
+                        missingData = true
+                        break@outer
                     }
                 }
                 val miscUpdate = convertMiscUpdate(update)
