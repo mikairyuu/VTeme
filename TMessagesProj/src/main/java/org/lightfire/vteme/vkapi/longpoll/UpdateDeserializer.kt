@@ -224,7 +224,7 @@ object UpdateDeserializeUtils {
             if (attachObj.has("reply"))
                 JsonParser.parseString(attachObj["reply"].asString)
                     .asJsonObject["conversation_message_id"].asInt else null,
-            attachObj.has("fwd"),
+            attachObj.has("fwd") && !attachObj.has("reply"),
         )
     }
 }

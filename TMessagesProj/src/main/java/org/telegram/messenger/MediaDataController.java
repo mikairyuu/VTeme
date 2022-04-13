@@ -4392,11 +4392,7 @@ public class MediaDataController extends BaseController {
                                         if (peer.isVK) {
                                             SparseArray<ArrayList<MessageObject>> sparseArray = replyMessageOwners.get(dialogId);
                                             ArrayList<Integer> ids = dialogReplyMessagesIds.valueAt(finalA);
-                                            for (int i = 0; i < ids.size(); i++) {
-                                                int ind = sparseArray.indexOfKey(ids.get(i));
-                                                sparseArray.put(messagesRes.messages.get(i).id, sparseArray.valueAt(ind));
-                                                sparseArray.removeAt(ind);
-                                            }
+                                            for (int i = 0; i < ids.size(); i++) sparseArray.put(messagesRes.messages.get(i).id, sparseArray.get(ids.get(i)));
                                         }
                                         ImageLoader.saveMessagesThumbs(messagesRes.messages);
                                         broadcastReplyMessages(messagesRes.messages, replyMessageOwners, messagesRes.users, messagesRes.chats, dialogId, false);
