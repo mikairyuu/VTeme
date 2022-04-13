@@ -107,7 +107,7 @@ public class DTOConverters {
         boolean isChat = (isFwd ? fwdOwner.getPeerId() : message.getPeerId()) >= 2000000000;
         resMsg.message = message.getText();
         resMsg.date = isFwd ? fwdOwner.getDate() : message.getDate();
-        resMsg.id = message.getConversationMessageId();
+        resMsg.id = message.getId();
         resMsg.out = isFwd ? fwdOwner.getOut().getValue() == 1 : message.getFromId() == VK.getUserId();
         resMsg.peer_id = makeVk(isChat ? new TLRPC.TL_peerChat() : new TLRPC.TL_peerUser());
         resMsg.dialog_id = isChat ? -(isFwd ? fwdOwner.getPeerId() : message.getPeerId()) : (isFwd ? fwdOwner.getPeerId() : message.getPeerId());
