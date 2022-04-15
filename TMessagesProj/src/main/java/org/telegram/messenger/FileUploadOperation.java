@@ -15,6 +15,7 @@ import android.net.Uri;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
+import org.lightfire.vteme.component.FileUploadOperation;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLObject;
@@ -26,7 +27,7 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
-public class FileUploadOperation {
+class FileUploadOperationImpl extends FileUploadOperation {
 
     private static class UploadCachedResult {
         private long bytesOffset;
@@ -82,13 +83,7 @@ public class FileUploadOperation {
     private SparseArray<UploadCachedResult> cachedResults = new SparseArray<>();
     protected long lastProgressUpdateTime;
 
-    public interface FileUploadOperationDelegate {
-        void didFinishUploadingFile(FileUploadOperation operation, TLRPC.InputFile inputFile, TLRPC.InputEncryptedFile inputEncryptedFile, byte[] key, byte[] iv);
-        void didFailedUploadingFile(FileUploadOperation operation);
-        void didChangedUploadProgress(FileUploadOperation operation, long uploadedSize, long totalSize);
-    }
-
-    public FileUploadOperation(int instance, String location, boolean encrypted, int estimated, int type) {
+    public FileUploadOperationImpl(int instance, String location, boolean encrypted, int estimated, int type) {
         currentAccount = instance;
         uploadingFilePath = location;
         isEncrypted = encrypted;
@@ -122,7 +117,7 @@ public class FileUploadOperation {
         });
     }
 
-    protected void onNetworkChanged(final boolean slow) {
+    public void onNetworkChanged(final boolean slow) {
         if (state != 1) {
             return;
         }
@@ -195,7 +190,7 @@ public class FileUploadOperation {
         }
     }
 
-    protected void checkNewDataAvailable(final long newAvailableSize, final long finalSize) {
+    public void checkNewDataAvailable(final long newAvailableSize, final long finalSize) {
         Utilities.stageQueue.postRunnable(() -> {
             if (estimatedSize != 0 && finalSize != 0) {
                 estimatedSize = 0;
@@ -548,7 +543,7 @@ public class FileUploadOperation {
                 } else {
                     size = totalFileSize;
                 }
-                delegate.didChangedUploadProgress(FileUploadOperation.this, uploadedBytesCount, size);
+                delegate.didChangedUploadProgress(FileUploadOperationImpl.this, uploadedBytesCount, size);
                 currentUploadRequetsCount--;
                 if (isLastPart && currentUploadRequetsCount == 0 && state == 1) {
                     state = 3;
@@ -563,7 +558,7 @@ public class FileUploadOperation {
                         result.parts = currentPartNum;
                         result.id = currentFileId;
                         result.name = uploadingFilePath.substring(uploadingFilePath.lastIndexOf("/") + 1);
-                        delegate.didFinishUploadingFile(FileUploadOperation.this, result, null, null, null);
+                        delegate.didFinishUploadingFile(FileUploadOperationImpl.this, result, null, null, null);
                         cleanup();
                     } else {
                         TLRPC.InputEncryptedFile result;
@@ -576,7 +571,7 @@ public class FileUploadOperation {
                         result.parts = currentPartNum;
                         result.id = currentFileId;
                         result.key_fingerprint = fingerprint;
-                        delegate.didFinishUploadingFile(FileUploadOperation.this, null, result, key, iv);
+                        delegate.didFinishUploadingFile(FileUploadOperationImpl.this, null, result, key, iv);
                         cleanup();
                     }
                     if (currentType == ConnectionsManager.FileTypeAudio) {
@@ -627,7 +622,7 @@ public class FileUploadOperation {
                 }
             } else {
                 state = 4;
-                delegate.didFailedUploadingFile(FileUploadOperation.this);
+                delegate.didFailedUploadingFile(FileUploadOperationImpl.this);
                 cleanup();
             }
         }, null, () -> Utilities.stageQueue.postRunnable(() -> {

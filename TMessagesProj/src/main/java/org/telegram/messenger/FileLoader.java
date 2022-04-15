@@ -12,6 +12,7 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
+import org.lightfire.vteme.component.FileUploadOperation;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 
@@ -262,7 +263,7 @@ public class FileLoader extends BaseController {
                     uploadSizes.remove(location);
                 }
             }
-            FileUploadOperation operation = new FileUploadOperation(currentAccount, location, encrypted, esimated, type);
+            FileUploadOperation operation = new FileUploadOperationImpl(currentAccount, location, encrypted, esimated, type);
             if (delegate != null && estimatedSize != 0) {
                 delegate.fileUploadProgressChanged(operation, location, 0, estimatedSize, encrypted);
             }
