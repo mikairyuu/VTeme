@@ -20370,6 +20370,7 @@ public class TLRPC {
             fake = (flags & 67108864) != 0;
             bot_attach_menu = (flags & 134217728) != 0;
             bot_menu_webview = (flags & 268435456) != 0;
+            isVk = (flags & 1073741824) != 0;
             id = stream.readInt64(exception);
             if ((flags & 1) != 0) {
                 access_hash = stream.readInt64(exception);
@@ -20439,7 +20440,7 @@ public class TLRPC {
             flags = fake ? (flags | 67108864) : (flags &~ 67108864);
             flags = bot_attach_menu ? (flags | 134217728) : (flags &~ 134217728);
             flags = bot_menu_webview ? (flags | 268435456) : (flags &~ 268435456);
-            flags = isVK ? (flags | 134217728) : (flags &~ 134217728);
+            flags = isVK ? (flags | 1073741824) : (flags &~ 1073741824);
             stream.writeInt32(flags);
             stream.writeInt64(id);
             if ((flags & 1) != 0) {
@@ -38958,7 +38959,7 @@ public class TLRPC {
             call_active = (flags & 8388608) != 0;
             call_not_empty = (flags & 16777216) != 0;
             noforwards = (flags & 33554432) != 0;
-            isVK = (flags & 134217728) != 0;
+            isVK = (flags & 1073741824) != 0;
             id = stream.readInt64(exception);
             title = stream.readString(exception);
             photo = ChatPhoto.TLdeserialize(stream, stream.readInt32(exception), exception);
@@ -38985,7 +38986,7 @@ public class TLRPC {
             flags = call_active ? (flags | 8388608) : (flags &~ 8388608);
             flags = call_not_empty ? (flags | 16777216) : (flags &~ 16777216);
             flags = noforwards ? (flags | 33554432) : (flags &~ 33554432);
-            flags = isVK ? (flags | 134217728) : (flags &~ 134217728);
+            flags = isVK ? (flags | 1073741824) : (flags &~ 1073741824);
             stream.writeInt32(flags);
             stream.writeInt64(id);
             stream.writeString(title);
@@ -55122,7 +55123,7 @@ public class TLRPC {
             edit_hide = (flags & 2097152) != 0;
             pinned = (flags & 16777216) != 0;
             noforwards = (flags & 67108864) != 0;
-            isVK = (flags & 134217728) != 0;
+            isVK = (flags & 1073741824) != 0;
             id = stream.readInt32(exception);
             if ((flags & 256) != 0) {
                 from_id = Peer.TLdeserialize(stream, stream.readInt32(exception), exception);
@@ -55223,7 +55224,7 @@ public class TLRPC {
             flags = edit_hide ? (flags | 2097152) : (flags &~ 2097152);
             flags = pinned ? (flags | 16777216) : (flags &~ 16777216);
             flags = noforwards ? (flags | 67108864) : (flags &~ 67108864);
-            flags = isVK ? (flags | 134217728) : (flags &~ 134217728);
+            flags = isVK ? (flags | 1073741824) : (flags &~ 1073741824);
             stream.writeInt32(flags);
             stream.writeInt32(id);
             if ((flags & 256) != 0) {
