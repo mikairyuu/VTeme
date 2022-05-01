@@ -41699,6 +41699,9 @@ public class TLRPC {
                 case 0xf52ff27f:
                     result = new TL_inputFile();
                     break;
+                case 0xf52ff37f:
+                    result = new TL_inputVKFile();
+                    break;
             }
             if (result == null && exception) {
                 throw new RuntimeException(String.format("can't parse magic %x in InputFile", constructor));
@@ -41745,6 +41748,28 @@ public class TLRPC {
             stream.writeInt32(parts);
             stream.writeString(name);
             stream.writeString(md5_checksum);
+        }
+    }
+
+    public static class TL_inputVKFile extends InputFile {
+        public static int constructor = 0xf52ff37f;
+
+        public long owner_id;
+
+        public void readParams(AbstractSerializedData stream, boolean exception) {
+            id = stream.readInt64(exception);
+            parts = 0;
+            name = stream.readString(exception);
+            md5_checksum = stream.readString(exception);
+            owner_id = stream.readInt64(exception);
+        }
+
+        public void serializeToStream(AbstractSerializedData stream) {
+            stream.writeInt32(constructor);
+            stream.writeInt64(id);
+            stream.writeString(name);
+            stream.writeString(md5_checksum);
+            stream.writeInt64(owner_id);
         }
     }
 

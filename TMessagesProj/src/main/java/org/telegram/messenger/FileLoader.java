@@ -12,7 +12,8 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
-import org.lightfire.vteme.component.FileUploadOperation;
+import org.lightfire.vteme.component.upload.FileUploadOperation;
+import org.lightfire.vteme.component.upload.VKFileUploadOperation;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 
@@ -30,10 +31,15 @@ public class FileLoader extends BaseController {
 
     public interface FileLoaderDelegate {
         void fileUploadProgressChanged(FileUploadOperation operation, String location, long uploadedSize, long totalSize, boolean isEncrypted);
+
         void fileDidUploaded(String location, TLRPC.InputFile inputFile, TLRPC.InputEncryptedFile inputEncryptedFile, byte[] key, byte[] iv, long totalFileSize);
+
         void fileDidFailedUpload(String location, boolean isEncrypted);
+
         void fileDidLoaded(String location, File finalFile, int type);
+
         void fileDidFailedLoad(String location, int state);
+
         void fileLoadProgressChanged(FileLoadOperation operation, String location, long uploadedSize, long totalSize);
     }
 
@@ -87,6 +93,7 @@ public class FileLoader extends BaseController {
     private ConcurrentHashMap<Integer, Object> parentObjectReferences = new ConcurrentHashMap<>();
 
     private static volatile FileLoader[] Instance = new FileLoader[UserConfig.MAX_ACCOUNT_COUNT];
+
     public static FileLoader getInstance(int num) {
         FileLoader localInstance = Instance[num];
         if (localInstance == null) {
@@ -255,7 +262,13 @@ public class FileLoader extends BaseController {
                     return;
                 }
             }
+            boolean isVK = (type & 0x1) == 1;
             int esimated = estimatedSize;
+            int peerId = 0;
+            if (isVK) {
+                peerId = esimated;
+                esimated = 0;
+            }
             if (esimated != 0) {
                 Long finalSize = uploadSizes.get(location);
                 if (finalSize != null) {
@@ -263,7 +276,7 @@ public class FileLoader extends BaseController {
                     uploadSizes.remove(location);
                 }
             }
-            FileUploadOperation operation = new FileUploadOperationImpl(currentAccount, location, encrypted, esimated, type);
+            FileUploadOperation operation = isVK ? new VKFileUploadOperation(currentAccount, location, peerId, type) : new FileUploadOperationImpl(currentAccount, location, encrypted, esimated, type);
             if (delegate != null && estimatedSize != 0) {
                 delegate.fileUploadProgressChanged(operation, location, 0, estimatedSize, encrypted);
             }
@@ -414,15 +427,15 @@ public class FileLoader extends BaseController {
                 int index = downloadQueue.indexOf(operation);
                 if (index >= 0) {
                     downloadQueue.remove(index);
-                        if (operation.start()) {
-                            count.put(datacenterId, count.get(datacenterId) + 1);
+                    if (operation.start()) {
+                        count.put(datacenterId, count.get(datacenterId) + 1);
+                    }
+                    if (queueType == QUEUE_TYPE_FILE) {
+                        if (operation.wasStarted() && !activeFileLoadOperation.contains(operation)) {
+                            pauseCurrentFileLoadOperations(operation);
+                            activeFileLoadOperation.add(operation);
                         }
-                        if (queueType == QUEUE_TYPE_FILE) {
-                            if (operation.wasStarted() && !activeFileLoadOperation.contains(operation)) {
-                                pauseCurrentFileLoadOperations(operation);
-                                activeFileLoadOperation.add(operation);
-                            }
-                        }
+                    }
                 } else {
                     pauseCurrentFileLoadOperations(operation);
                     operation.start();
@@ -1420,7 +1433,7 @@ public class FileLoader extends BaseController {
     public void checkCurrentDownloadsFiles() {
         ArrayList<MessageObject> messagesToRemove = new ArrayList<>();
         ArrayList<MessageObject> messageObjects = new ArrayList<>(getDownloadController().recentDownloadingFiles);
-        for (int i = 0 ; i < messageObjects.size(); i++) {
+        for (int i = 0; i < messageObjects.size(); i++) {
             messageObjects.get(i).checkMediaExistance();
             if (messageObjects.get(i).mediaExists) {
                 messagesToRemove.add(messageObjects.get(i));

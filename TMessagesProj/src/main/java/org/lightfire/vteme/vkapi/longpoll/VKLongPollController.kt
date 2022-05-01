@@ -9,6 +9,7 @@ import com.vk.sdk.api.messages.MessagesService
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import okhttp3.*
+import org.lightfire.vteme.VTemeConfig
 import org.lightfire.vteme.VTemeController
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.DTO.*
@@ -25,7 +26,6 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     private var lastTs = messagesStorage.vkLastTs
     private var inited = false
 
-    private val okhttpClient: OkHttpClient by lazy { OkHttpClient() }
     private val gson: Gson
 
     init {
@@ -71,9 +71,9 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
 
     fun startPolling() {
         if (!inited) initLongPoll(true)
-        if (okhttpClient.dispatcher.idleCallback == null) {
-            okhttpClient.dispatcher.idleCallback = Runnable {
-                okhttpClient.newCall(
+        if (VTemeConfig.client.dispatcher.idleCallback == null) {
+            VTemeConfig.client.dispatcher.idleCallback = Runnable {
+                VTemeConfig.client.newCall(
                     Request.Builder()
                         .url("https://${vkServer}?act=a_check&key=${vkKey}&ts=${lastTs}&wait=25&mode=${32 + 8 + 2}&version=3")
                         .build()
@@ -94,13 +94,13 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     override fun onFailure(call: Call, e: IOException) {}
                 })
             }
-            okhttpClient.dispatcher.idleCallback!!.run()
+            VTemeConfig.client.dispatcher.idleCallback!!.run()
         }
     }
 
     fun stopPolling() {
         if (!inited) return
-        okhttpClient.dispatcher.idleCallback = null
+        VTemeConfig.client.dispatcher.idleCallback = null
     }
 
     private fun convertMiscUpdate(update: Any): TLRPC.Update? {

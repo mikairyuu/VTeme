@@ -27,11 +27,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import okhttp3.OkHttpClient;
+
 public class VTemeConfig {
 
     public static final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("vtemecfg", Context.MODE_PRIVATE);
 
     public static final Object sync = new Object();
+    public static OkHttpClient client = null;
 
     private static boolean configLoaded = false;
     private static final ArrayList<ConfigItem> configs = new ArrayList<>();
@@ -102,6 +105,7 @@ public class VTemeConfig {
             }
             try {
                 VKToken = VKAccessToken.Companion.restore(vkKeyValueStorage);
+                if (VKToken != null) client = new OkHttpClient();
             } catch (Exception e) {
                 VKToken = null;
             }
