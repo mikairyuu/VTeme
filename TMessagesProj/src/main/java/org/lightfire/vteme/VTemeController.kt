@@ -1,10 +1,12 @@
 package org.lightfire.vteme
 
+import android.content.ContentProviderOperation
 import com.vk.api.sdk.VK.execute
 import com.vk.api.sdk.VKApiCallback
 import com.vk.sdk.api.base.dto.BaseUserGroupFields
 import com.vk.sdk.api.messages.MessagesService
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse
+import okhttp3.OkHttpClient
 import org.lightfire.vteme.utils.UIUtil.runOnIoDispatcher
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.VKLongPollController
@@ -41,7 +43,7 @@ class VTemeController(val num: Int) : BaseController(num), NotificationCenterDel
             5,
             null,
             null,
-            Arrays.asList(BaseUserGroupFields.ID, BaseUserGroupFields.NAME),
+            listOf(BaseUserGroupFields.PHOTO_100),
             null
         ), object : VKApiCallback<MessagesGetConversationsResponse?> {
             override fun success(result: MessagesGetConversationsResponse?) {
@@ -61,6 +63,9 @@ class VTemeController(val num: Int) : BaseController(num), NotificationCenterDel
     }
 
     companion object {
+        @JvmStatic
+        val client: OkHttpClient by lazy { OkHttpClient() }
+
         @Volatile
         private var Instance: VTemeController? = null
         fun getInstance(num: Int): VTemeController? {

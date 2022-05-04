@@ -13,8 +13,12 @@ import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
 import com.vk.sdk.api.messages.dto.MessagesMessageAction;
 import com.vk.sdk.api.messages.dto.MessagesMessageAttachment;
+import com.vk.sdk.api.messages.dto.MessagesMessageAttachmentType;
+import com.vk.sdk.api.photos.dto.PhotosPhoto;
+import com.vk.sdk.api.photos.dto.PhotosPhotoSizes;
 import com.vk.sdk.api.users.dto.UsersUserFull;
 
+import org.telegram.messenger.SharedConfig;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 
@@ -46,6 +50,48 @@ public class DTOConverters {
             resMsg.reply_to = new TLRPC.TL_messageReplyHeader();
             resMsg.reply_to.reply_to_msg_id = message.getReplyMessage().getId();
             resMsg.replyMessage = VKForeignMessageConverter(message.getReplyMessage(), null);
+        }
+        List<MessagesMessageAttachment> attachments = message.getAttachments();
+        if (attachments != null && attachments.size() != 0) {
+            if (attachments.get(0).getType().equals("photo")) {
+                resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_MEDIA;
+                PhotosPhoto photo = attachments.get(0).getPhoto();
+                TLRPC.MessageMedia media = makeVk(new TLRPC.TL_messageMediaPhoto());
+                media.flags = 1;
+                media.photo = makeVk(new TLRPC.TL_photo());
+                media.photo.id = photo.getId();
+                media.photo.date = photo.getDate();
+                media.photo.user_id = photo.getOwnerId().getValue();
+                media.photo.dc_id = -1;
+                media.photo.file_reference = new byte[0];
+                media.photo.sizes = new ArrayList<>();
+                for (PhotosPhotoSizes size : photo.getSizes()) {
+                    TLRPC.TL_VKphotoSize photoSize = new TLRPC.TL_VKphotoSize();
+                    photoSize.w = size.getWidth();
+                    photoSize.h = size.getHeight();
+                    photoSize.url = size.getUrl();
+                    if (photoSize.w <= 100 && photoSize.h <= 100) {
+                        photoSize.type = "s";
+                    } else if (photoSize.w <= 320 && photoSize.h <= 320) {
+                        photoSize.type = "m";
+                    } else if (photoSize.w <= 800 && photoSize.h <= 800) {
+                        photoSize.type = "x";
+                    } else if (photoSize.w <= 1280 && photoSize.h <= 1280) {
+                        photoSize.type = "y";
+                    } else {
+                        photoSize.type = "w";
+                    }
+                    TLRPC.TL_VKfileLocation location = new TLRPC.TL_VKfileLocation();
+                    location.url = photoSize.url;
+                    location.volume_id = Integer.MIN_VALUE;
+                    location.dc_id = -1;
+                    location.local_id = SharedConfig.getLastLocalId();
+                    location.file_reference = new byte[0];
+                    photoSize.location = location;
+                    media.photo.sizes.add(photoSize);
+                }
+                resMsg.media = media;
+            }
         }
         if (isChat)
             resMsg.peer_id.chat_id = message.getPeerId();
@@ -160,7 +206,17 @@ public class DTOConverters {
             retChat.id = ret_dialog.id;
             ret_dialog.id = -ret_dialog.id;
             retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
-            retChat.photo = new TLRPC.TL_chatPhotoEmpty();
+            retChat.photo = new TLRPC.TL_chatPhoto_layer115();
+            retChat.photo.dc_id = -1;
+            retChat.access_hash = -1;
+            retChat.photo.photo_small = new TLRPC.TL_VKfileLocation();
+            retChat.photo.photo_big = new TLRPC.TL_VKfileLocation();
+            retChat.photo.photo_small.volume_id = retChat.photo.photo_big.volume_id = -retChat.photo.photo_id;
+            retChat.photo.photo_small.local_id = 'a';
+            retChat.photo.photo_big.local_id = 'c';
+            retChat.photo.photo_id = retChat.id;
+            ((TLRPC.TL_VKfileLocation) retChat.photo.photo_small).url = conv.getChatSettings().getPhoto().getPhoto100();
+            ((TLRPC.TL_VKfileLocation) retChat.photo.photo_big).url = conv.getChatSettings().getPhoto().getPhoto200();
             retPair = new Pair<>(ret_dialog, retChat);
         } else {
             retPair = new Pair<>(ret_dialog, null);
@@ -180,8 +236,19 @@ public class DTOConverters {
         retUser.id = user.getId().getValue();
         retUser.first_name = user.getFirstName();
         retUser.last_name = user.getLastName();
-        retUser.flags = retUser.flags | 6;
-        retUser.photo = new TLRPC.TL_userProfilePhotoEmpty();
+        retUser.flags = retUser.flags | 39;
+        retUser.access_hash = -1;
+        retUser.photo = new TLRPC.TL_userProfilePhoto_old();
+        retUser.photo.dc_id = -1;
+        retUser.photo.photo_small = new TLRPC.TL_VKfileLocation();
+        retUser.photo.photo_big = new TLRPC.TL_VKfileLocation();
+        retUser.photo.photo_id = retUser.id;
+        ((TLRPC.TL_VKfileLocation) retUser.photo.photo_small).url = user.getPhoto100();
+        ((TLRPC.TL_VKfileLocation) retUser.photo.photo_big).url = user.getPhotoBig();
+        retUser.photo.photo_small.volume_id = -retUser.id;
+        retUser.photo.photo_big.volume_id = -retUser.id;
+        retUser.photo.photo_small.local_id = 'a';
+        retUser.photo.photo_big.local_id = 'c';
         retUser.status = new TLRPC.TL_userStatusRecently();
         if (VK.getUserId() == user.getId()) retUser.self = true;
         return retUser;

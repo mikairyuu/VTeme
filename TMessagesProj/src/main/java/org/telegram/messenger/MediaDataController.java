@@ -2849,7 +2849,7 @@ public class MediaDataController extends BaseController {
                 req.filters.add(new TLRPC.TL_inputMessagesFilterGif());
             }
             req.peer = getMessagesController().getInputPeer(dialogId);
-            if (req.peer == null) {
+            if (req.peer == null || req.peer.isVK) {
                 return;
             }
             int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {

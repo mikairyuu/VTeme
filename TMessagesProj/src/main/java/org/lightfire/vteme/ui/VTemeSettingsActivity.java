@@ -113,6 +113,7 @@ public class VTemeSettingsActivity extends BaseFragment {
             if (position == VkRow) {
                 ArrayList<VKScope> VkStuff = new ArrayList<>();
                 VkStuff.add(VKScope.MESSAGES);
+                VkStuff.add(VKScope.PHOTOS);
                 VK.login(getParentActivity(), VkStuff);
             } else if (position == FaceBookRow) {
             } else if (position == channelRow) {

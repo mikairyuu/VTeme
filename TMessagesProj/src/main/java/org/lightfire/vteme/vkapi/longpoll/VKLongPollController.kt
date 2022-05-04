@@ -8,6 +8,7 @@ import com.vk.api.sdk.VKApiCallback
 import com.vk.sdk.api.messages.MessagesService
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
+import com.vk.sdk.api.users.dto.UsersFields
 import okhttp3.*
 import org.lightfire.vteme.VTemeController
 import org.lightfire.vteme.vkapi.DTOConverters
@@ -25,7 +26,6 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
     private var lastTs = messagesStorage.vkLastTs
     private var inited = false
 
-    private val okhttpClient: OkHttpClient by lazy { OkHttpClient() }
     private val gson: Gson
 
     init {
@@ -71,9 +71,9 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
 
     fun startPolling() {
         if (!inited) initLongPoll(true)
-        if (okhttpClient.dispatcher.idleCallback == null) {
-            okhttpClient.dispatcher.idleCallback = Runnable {
-                okhttpClient.newCall(
+        else if (VTemeController.client.dispatcher.idleCallback == null) {
+            VTemeController.client.dispatcher.idleCallback = Runnable {
+                VTemeController.client.newCall(
                     Request.Builder()
                         .url("https://${vkServer}?act=a_check&key=${vkKey}&ts=${lastTs}&wait=25&mode=${32 + 8 + 2}&version=3")
                         .build()
@@ -94,13 +94,13 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     override fun onFailure(call: Call, e: IOException) {}
                 })
             }
-            okhttpClient.dispatcher.idleCallback!!.run()
+            VTemeController.client.dispatcher.idleCallback!!.run()
         }
     }
 
     fun stopPolling() {
         if (!inited) return
-        okhttpClient.dispatcher.idleCallback = null
+        VTemeController.client.dispatcher.idleCallback = null
     }
 
     private fun convertMiscUpdate(update: Any): TLRPC.Update? {
@@ -235,6 +235,23 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             newMsg.reply_to.reply_to_msg_id =
                                 update.extraFields!!.attachments?.reply_to!!
                         }
+                        if (update.extraFields!!.attachments?.items!!.isNotEmpty()) {
+                            for (attachment in update.extraFields!!.attachments!!.items!!) {
+                                when (attachment) {
+                                    is PhotoAttachment -> {
+                                        newMsg.flags = newMsg.flags or TLRPC.MESSAGE_FLAG_HAS_MEDIA
+                                        val media = TLRPC.TL_messageMediaPhoto()
+                                        media.flags = 1
+                                        media.photo = TLRPC.TL_photo()
+                                        media.photo.id = attachment.item_id
+                                        media.photo.dc_id = -1
+                                        media.photo.user_id = attachment.owner_id
+                                        media.photo.sizes = arrayListOf(TLRPC.TL_VKphotoSize())
+                                        newMsg.media = media
+                                    }
+                                }
+                            }
+                        }
 
                         AndroidUtilities.runOnUIThread {
                             messagesController.updateInterfaceWithVKMessages(
@@ -320,7 +337,8 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                 pts = messagesStorage.vkLastPts,
                 maxMsgId = if (messagesStorage.vkLastMaxMsgId != 0) messagesStorage.vkLastMaxMsgId else null,
                 lpVersion = 3,
-                extended = true
+                extended = true,
+                fields = listOf(UsersFields.PHOTO_100)
             ),
                 object : VKApiCallback<MessagesGetLongPollHistoryResponse?> {
                     override fun success(result: MessagesGetLongPollHistoryResponse?) {

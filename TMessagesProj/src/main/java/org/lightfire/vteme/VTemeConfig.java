@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import okhttp3.OkHttpClient;
+
 public class VTemeConfig {
 
     public static final SharedPreferences preferences = ApplicationLoader.applicationContext.getSharedPreferences("vtemecfg", Context.MODE_PRIVATE);

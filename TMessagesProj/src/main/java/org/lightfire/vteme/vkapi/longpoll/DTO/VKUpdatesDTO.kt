@@ -19,8 +19,10 @@ data class MessageAttachments(
     val source_act: String?,
     val reply_to: Int?,
     val has_forwards : Boolean,
-    //TODO: fill the rest of attachment fields
+    val items: List<Any>?
 )
+
+data class PhotoAttachment(val owner_id: Long, val item_id: Long)
 
 // 1
 data class MessageFlagsChanged(

@@ -42,7 +42,7 @@ dependencies {
     implementation files('libs/libgsaverification-client.aar')
 
     //VTeme Gradle Imports
-    implementation 'com.github.mikairyuu:vk-android-sdk:51d312d331'
+    implementation 'com.github.mikairyuu:vk-android-sdk:-SNAPSHOT'
     implementation "androidx.security:security-crypto:1.0.0"
     implementation "com.squareup.okhttp3:okhttp:4.9.3"
     implementation 'com.google.code.gson:gson:2.8.8'
