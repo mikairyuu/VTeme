@@ -20370,7 +20370,7 @@ public class TLRPC {
             fake = (flags & 67108864) != 0;
             bot_attach_menu = (flags & 134217728) != 0;
             bot_menu_webview = (flags & 268435456) != 0;
-            isVk = (flags & 1073741824) != 0;
+            isVK = (flags & 1073741824) != 0;
             id = stream.readInt64(exception);
             if ((flags & 1) != 0) {
                 access_hash = stream.readInt64(exception);

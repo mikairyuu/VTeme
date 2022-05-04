@@ -79,7 +79,6 @@ public class VTemeSettingsActivity extends BaseFragment {
 
     private int SocialNetworksRow;
     private int VkRow;
-    private int FaceBookRow;
     private int categories2Row;
 
     private int aboutRow;
@@ -115,7 +114,6 @@ public class VTemeSettingsActivity extends BaseFragment {
                 VkStuff.add(VKScope.MESSAGES);
                 VkStuff.add(VKScope.PHOTOS);
                 VK.login(getParentActivity(), VkStuff);
-            } else if (position == FaceBookRow) {
             } else if (position == channelRow) {
                 MessagesController.getInstance(currentAccount).openByUserName("VTeme", this, 1);
             } else if (position == sourceCodeRow) {
@@ -156,7 +154,6 @@ public class VTemeSettingsActivity extends BaseFragment {
         rowCount = 0;
         SocialNetworksRow = rowCount++;
         VkRow = rowCount++;
-        FaceBookRow = rowCount++;
         categories2Row = rowCount++;
 
         aboutRow = rowCount++;
@@ -194,13 +191,6 @@ public class VTemeSettingsActivity extends BaseFragment {
                     break;
                 }
                 case 2: {
-                    ManageLinksActivity.TextCell textCell = (ManageLinksActivity.TextCell) holder.itemView;
-                    if (position == FaceBookRow) {
-                        textCell.setTextAndIcon(LocaleController.getString("FaceBook", R.string.FaceBook), mContext.getResources().getDrawable(R.drawable.ab_progress), true);
-                    }
-                    break;
-                }
-                case 3: {
                     TextSettingsCell textCell = (TextSettingsCell) holder.itemView;
                     if (position == channelRow) {
                         textCell.setTextAndValue(LocaleController.getString("OfficialChannel", R.string.OfficialChannel), "@LightFire", true);
@@ -209,7 +199,7 @@ public class VTemeSettingsActivity extends BaseFragment {
                     }
                     break;
                 }
-                case 4: {
+                case 3: {
                     HeaderCell headerCell = (HeaderCell) holder.itemView;
                     if (position == SocialNetworksRow) {
                         headerCell.setText(LocaleController.getString("SocialNetworks", R.string.SocialNetworks));
@@ -218,7 +208,7 @@ public class VTemeSettingsActivity extends BaseFragment {
                     }
                     break;
                 }
-                case 6: {
+                case 5: {
                     TextDetailSettingsCell textDetailSettingsCell = (TextDetailSettingsCell) holder.itemView;
                     if (position == VkRow) {
                         if (VTemeConfig.VKToken == null)
@@ -247,26 +237,22 @@ public class VTemeSettingsActivity extends BaseFragment {
                     view = new ShadowSectionCell(mContext);
                     break;
                 case 2:
-                    view = new ManageLinksActivity.TextCell(mContext);
-                    view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
-                    break;
-                case 3:
                     view = new TextSettingsCell(mContext);
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                     break;
-                case 4:
+                case 3:
                     view = new HeaderCell(mContext);
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                     break;
-                case 5:
+                case 4:
                     view = new NotificationsCheckCell(mContext);
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                     break;
-                case 6:
+                case 5:
                     view = new TextDetailSettingsCell(mContext);
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                     break;
-                case 7:
+                case 6:
                     view = new TextInfoPrivacyCell(mContext);
                     view.setBackground(Theme.getThemedDrawable(mContext, R.drawable.greydivider, Theme.key_windowBackgroundGrayShadow));
                     break;
@@ -279,12 +265,10 @@ public class VTemeSettingsActivity extends BaseFragment {
         public int getItemViewType(int position) {
             if (position == categories2Row || position == about2Row) {
                 return 1;
-            } else if (position == FaceBookRow) {
-                return 2;
             } else if (position == SocialNetworksRow || position == aboutRow) {
-                return 4;
+                return 3;
             } else if (position == VkRow) {
-                return 6;
+                return 5;
             }
             return 3;
         }
