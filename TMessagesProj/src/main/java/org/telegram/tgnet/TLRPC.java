@@ -41015,6 +41015,9 @@ public class TLRPC {
                 case 0xbc7fc6cd:
                     result = new TL_fileLocationToBeDeprecated();
                     break;
+                case 0xbc7fc6dd:
+                    result = new TL_VKfileLocation();
+                    break;
                 case 0x55555554:
                     result = new TL_fileEncryptedLocation();
                     break;
@@ -41108,6 +41111,19 @@ public class TLRPC {
     public static class TL_VKfileLocation extends TL_fileLocationToBeDeprecated {
         public static int constructor = 0xbc7fc6dd;
         public String url;
+
+        public void readParams(AbstractSerializedData stream, boolean exception) {
+            volume_id = stream.readInt64(exception);
+            local_id = stream.readInt32(exception);
+            url = stream.readString(exception);
+        }
+
+        public void serializeToStream(AbstractSerializedData stream) {
+            stream.writeInt32(constructor);
+            stream.writeInt64(volume_id);
+            stream.writeInt32(local_id);
+            stream.writeString(url);
+        }
     }
 
     public static class TL_fileEncryptedLocation extends FileLocation {

@@ -43,7 +43,7 @@ class VTemeController(val num: Int) : BaseController(num), NotificationCenterDel
             5,
             null,
             null,
-            Arrays.asList(BaseUserGroupFields.ID, BaseUserGroupFields.NAME),
+            listOf(BaseUserGroupFields.PHOTO_100),
             null
         ), object : VKApiCallback<MessagesGetConversationsResponse?> {
             override fun success(result: MessagesGetConversationsResponse?) {

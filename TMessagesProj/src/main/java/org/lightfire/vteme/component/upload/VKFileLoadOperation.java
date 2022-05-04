@@ -175,7 +175,6 @@ public class VKFileLoadOperation extends FileLoadOperation {
             }
             totalBytesCount = documentLocation.size;
             if (key != null) {
-                int toAdd = 0;
                 if (totalBytesCount % 16 != 0) {
                     bytesCountPadding = 16 - totalBytesCount % 16;
                     totalBytesCount += bytesCountPadding;
@@ -487,10 +486,6 @@ public class VKFileLoadOperation extends FileLoadOperation {
         if (alreadyStarted) {
             return wasPaused;
         }
-        if (requestUrl.isEmpty() || location == null) {
-            onFail(true, 0);
-            return false;
-        }
 
         streamStartOffset = streamOffset / currentDownloadChunkSize * currentDownloadChunkSize;
 
@@ -648,7 +643,7 @@ public class VKFileLoadOperation extends FileLoadOperation {
     }
 
     public boolean isPreloadFinished() {
-        return true;
+        return false;
     }
 
     public void cancel() {
@@ -658,9 +653,11 @@ public class VKFileLoadOperation extends FileLoadOperation {
     public void cancel(boolean deleteFiles) {
         Utilities.stageQueue.postRunnable(() -> {
             if (state != stateFinished && state != stateFailed) {
-                for (int a = 0; a < requestInfos.size(); a++) {
-                    VKRequestInfo requestInfo = requestInfos.get(a);
-                    requestInfo.call.cancel();
+                if (requestInfos != null) {
+                    for (int a = 0; a < requestInfos.size(); a++) {
+                        VKRequestInfo requestInfo = requestInfos.get(a);
+                        if (requestInfo.call != null) requestInfo.call.cancel();
+                    }
                 }
                 onFail(false, 1);
             }
@@ -930,6 +927,11 @@ public class VKFileLoadOperation extends FileLoadOperation {
         int count = 1;
         if (totalBytesCount > 0) {
             count = Math.max(0, currentMaxDownloadRequests - requestInfos.size());
+        }
+
+        if (requestUrl == null) {
+            onFail(true, -1);
+            return;
         }
 
         for (int a = 0; a < count; a++) {

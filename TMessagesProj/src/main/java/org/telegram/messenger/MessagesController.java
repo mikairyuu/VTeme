@@ -3577,7 +3577,7 @@ public class MessagesController extends BaseController implements NotificationCe
         if(user.isVK){
             VK.execute(new UsersService().usersGet(Collections.singletonList(new UserId(user.id)),
                     Arrays.asList(UsersFields.STATUS, UsersFields.LAST_SEEN, UsersFields.DOMAIN,
-                            UsersFields.BLACKLISTED_BY_ME),null),
+                            UsersFields.BLACKLISTED_BY_ME, UsersFields.PHOTO_100, UsersFields.PHOTO_BIG),null),
                     new VKApiCallback<List<UsersUserFull>>() {
                 @Override
                 public void success(List<UsersUserFull> usersUserFulls) {
@@ -6582,7 +6582,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     });
                     getConnectionsManager().bindRequestToGuid(reqId, classGuid);
                 } else {
-                    VK.execute(new MessagesService().messagesGetHistoryExtended(req.add_offset, req.limit, null, (int) (req.peer.user_id == 0 ? req.peer.chat_id : req.peer.user_id), req.offset_id, null, Arrays.asList(UsersFields.SCREEN_NAME), null), new VKApiCallback<MessagesGetHistoryExtendedResponse>() {
+                    VK.execute(new MessagesService().messagesGetHistoryExtended(req.add_offset, req.limit, null, (int) (req.peer.user_id == 0 ? req.peer.chat_id : req.peer.user_id), req.offset_id, null, Collections.singletonList(UsersFields.PHOTO_100), null), new VKApiCallback<MessagesGetHistoryExtendedResponse>() {
                         @Override
                         public void success(MessagesGetHistoryExtendedResponse messagesRes) {
                             TLRPC.messages_Messages messages = DTOConverters.VKMessagesResponseConverter(messagesRes);
@@ -8507,7 +8507,7 @@ public class MessagesController extends BaseController implements NotificationCe
         if(req.peer.isVK){
             VK.execute(new MessagesService().messagesGetHistoryExtended(0, 1, null,
                     req.peer instanceof TLRPC.TL_inputPeerChat ? (int) req.peer.chat_id : (int) req.peer.user_id,
-                    null, null, null, null), new VKApiCallback<MessagesGetHistoryExtendedResponse>(){
+                    null, null, Collections.singletonList(UsersFields.PHOTO_100), null), new VKApiCallback<MessagesGetHistoryExtendedResponse>(){
 
                 @Override
                 public void success(MessagesGetHistoryExtendedResponse messagesGetHistoryExtendedResponse) {

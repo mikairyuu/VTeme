@@ -220,9 +220,14 @@ object UpdateDeserializeUtils {
             if (dataObj != null) array[startIndex + 4].asJsonObject else array[startIndex + 3].asJsonObject
         val attachments = mutableListOf<Any>()
         for (i in 1..100) {
-            if (attachObj.has("attach${i}_photo")) {
-                val id = attachObj.get("attach${i}").asString.split('_')
-                attachments.add(PhotoAttachment(id[0].toLong(), id[1].toLong()))
+            if (attachObj.has("attach${i}_type")) {
+                val type = attachObj.get("attach${i}_type").asString
+                when (type) {
+                    "photo" -> {
+                        val id = attachObj.get("attach${i}").asString.split('_')
+                        attachments.add(PhotoAttachment(id[0].toLong(), id[1].toLong()))
+                    }
+                }
             } else {
                 break
             }

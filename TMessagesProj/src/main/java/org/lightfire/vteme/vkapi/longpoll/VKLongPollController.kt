@@ -8,6 +8,7 @@ import com.vk.api.sdk.VKApiCallback
 import com.vk.sdk.api.messages.MessagesService
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
+import com.vk.sdk.api.users.dto.UsersFields
 import okhttp3.*
 import org.lightfire.vteme.VTemeController
 import org.lightfire.vteme.vkapi.DTOConverters
@@ -238,12 +239,14 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             for (attachment in update.extraFields!!.attachments!!.items!!) {
                                 when (attachment) {
                                     is PhotoAttachment -> {
-                                        newMsg.flags = newMsg.flags and TLRPC.MESSAGE_FLAG_HAS_MEDIA
+                                        newMsg.flags = newMsg.flags or TLRPC.MESSAGE_FLAG_HAS_MEDIA
                                         val media = TLRPC.TL_messageMediaPhoto()
+                                        media.flags = 1
                                         media.photo = TLRPC.TL_photo()
                                         media.photo.id = attachment.item_id
+                                        media.photo.dc_id = -1
                                         media.photo.user_id = attachment.owner_id
-                                        media.photo.isVK = true
+                                        media.photo.sizes = arrayListOf(TLRPC.TL_VKphotoSize())
                                         newMsg.media = media
                                     }
                                 }
@@ -334,7 +337,8 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                 pts = messagesStorage.vkLastPts,
                 maxMsgId = if (messagesStorage.vkLastMaxMsgId != 0) messagesStorage.vkLastMaxMsgId else null,
                 lpVersion = 3,
-                extended = true
+                extended = true,
+                fields = listOf(UsersFields.PHOTO_100)
             ),
                 object : VKApiCallback<MessagesGetLongPollHistoryResponse?> {
                     override fun success(result: MessagesGetLongPollHistoryResponse?) {
