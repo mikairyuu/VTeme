@@ -259,7 +259,7 @@ public class DTOConverters {
         TLRPC.Message curMsg = message;
         while (curMsg.replyMessage != null) {
             arrayList.add(curMsg.replyMessage);
-            curMsg = message.replyMessage;
+            curMsg = curMsg.replyMessage;
         }
     }
 
