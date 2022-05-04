@@ -117,7 +117,7 @@ public class VKFileUploadOperation extends FileUploadOperation {
                         .url(uploadLink)
                         .post(requestBody)
                         .build();
-                VTemeConfig.client.newCall(request).enqueue(new Callback() {
+                VTemeController.Companion.getClient().newCall(request).enqueue(new Callback() {
                     @Override
                     public void onFailure(@NonNull Call call, @NonNull IOException e) {
                         cancel();

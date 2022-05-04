@@ -9,7 +9,6 @@ import com.vk.sdk.api.messages.MessagesService
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import okhttp3.*
-import org.lightfire.vteme.VTemeConfig
 import org.lightfire.vteme.VTemeController
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.DTO.*
@@ -71,9 +70,9 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
 
     fun startPolling() {
         if (!inited) initLongPoll(true)
-        if (VTemeConfig.client.dispatcher.idleCallback == null) {
-            VTemeConfig.client.dispatcher.idleCallback = Runnable {
-                VTemeConfig.client.newCall(
+        else if (VTemeController.client.dispatcher.idleCallback == null) {
+            VTemeController.client.dispatcher.idleCallback = Runnable {
+                VTemeController.client.newCall(
                     Request.Builder()
                         .url("https://${vkServer}?act=a_check&key=${vkKey}&ts=${lastTs}&wait=25&mode=${32 + 8 + 2}&version=3")
                         .build()
@@ -94,13 +93,13 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     override fun onFailure(call: Call, e: IOException) {}
                 })
             }
-            VTemeConfig.client.dispatcher.idleCallback!!.run()
+            VTemeController.client.dispatcher.idleCallback!!.run()
         }
     }
 
     fun stopPolling() {
         if (!inited) return
-        VTemeConfig.client.dispatcher.idleCallback = null
+        VTemeController.client.dispatcher.idleCallback = null
     }
 
     private fun convertMiscUpdate(update: Any): TLRPC.Update? {
@@ -234,6 +233,21 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             newMsg.reply_to = TLRPC.TL_messageReplyHeader()
                             newMsg.reply_to.reply_to_msg_id =
                                 update.extraFields!!.attachments?.reply_to!!
+                        }
+                        if (update.extraFields!!.attachments?.items!!.isNotEmpty()) {
+                            for (attachment in update.extraFields!!.attachments!!.items!!) {
+                                when (attachment) {
+                                    is PhotoAttachment -> {
+                                        newMsg.flags = newMsg.flags and TLRPC.MESSAGE_FLAG_HAS_MEDIA
+                                        val media = TLRPC.TL_messageMediaPhoto()
+                                        media.photo = TLRPC.TL_photo()
+                                        media.photo.id = attachment.item_id
+                                        media.photo.user_id = attachment.owner_id
+                                        media.photo.isVK = true
+                                        newMsg.media = media
+                                    }
+                                }
+                            }
                         }
 
                         AndroidUtilities.runOnUIThread {

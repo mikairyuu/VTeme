@@ -41105,6 +41105,11 @@ public class TLRPC {
         }
     }
 
+    public static class TL_VKfileLocation extends TL_fileLocationToBeDeprecated {
+        public static int constructor = 0xbc7fc6dd;
+        public String url;
+    }
+
     public static class TL_fileEncryptedLocation extends FileLocation {
         public static int constructor = 0x55555554;
 
@@ -41230,6 +41235,9 @@ public class TLRPC {
                 case 0x75c78e60:
                     result = new TL_photoSize();
                     break;
+                case 0x75c78e50:
+                    result = new TL_VKphotoSize();
+                    break;
                 case 0x21e1ad6:
                     result = new TL_photoCachedSize();
                     break;
@@ -41244,7 +41252,12 @@ public class TLRPC {
                 result.readParams(stream, exception);
                 if (result.location == null) {
                     if (!TextUtils.isEmpty(result.type) && (photo_id != 0 || document_id != 0 || sticker_set_id != 0)) {
-                        result.location = new TL_fileLocationToBeDeprecated();
+                        if (result instanceof TL_VKphotoSize) {
+                            result.location = new TL_VKfileLocation();
+                            ((TL_VKfileLocation) result.location).url = ((TL_VKphotoSize) result).url;
+                        } else {
+                            result.location = new TL_fileLocationToBeDeprecated();
+                        }
                         if (photo_id != 0) {
                             result.location.volume_id = -photo_id;
                             result.location.local_id = result.type.charAt(0);
@@ -41396,6 +41409,28 @@ public class TLRPC {
             stream.writeInt32(w);
             stream.writeInt32(h);
             stream.writeInt32(size);
+        }
+    }
+
+    public static class TL_VKphotoSize extends PhotoSize {
+        public static int constructor = 0x75c78e50;
+        public String url;
+
+        public void readParams(AbstractSerializedData stream, boolean exception) {
+            type = stream.readString(exception);
+            w = stream.readInt32(exception);
+            h = stream.readInt32(exception);
+            size = stream.readInt32(exception);
+            url = stream.readString(exception);
+        }
+
+        public void serializeToStream(AbstractSerializedData stream) {
+            stream.writeInt32(constructor);
+            stream.writeString(type);
+            stream.writeInt32(w);
+            stream.writeInt32(h);
+            stream.writeInt32(size);
+            stream.writeString(url);
         }
     }
 

@@ -218,6 +218,15 @@ object UpdateDeserializeUtils {
             ) array[startIndex + 3].asJsonObject else null
         val attachObj =
             if (dataObj != null) array[startIndex + 4].asJsonObject else array[startIndex + 3].asJsonObject
+        val attachments = mutableListOf<Any>()
+        for (i in 1..100) {
+            if (attachObj.has("attach${i}_photo")) {
+                val id = attachObj.get("attach${i}").asString.split('_')
+                attachments.add(PhotoAttachment(id[0].toLong(), id[1].toLong()))
+            } else {
+                break
+            }
+        }
         return MessageAttachments(
             if (dataObj?.has("from") == true) dataObj["from"].asInt else null,
             if (dataObj?.has("source_act") == true) dataObj["source_act"].asString else null,
@@ -225,6 +234,7 @@ object UpdateDeserializeUtils {
                 JsonParser.parseString(attachObj["reply"].asString)
                     .asJsonObject["conversation_message_id"].asInt else null,
             attachObj.has("fwd") && !attachObj.has("reply"),
+            attachments
         )
     }
 }

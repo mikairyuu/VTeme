@@ -12,7 +12,9 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
+import org.lightfire.vteme.component.upload.FileLoadOperation;
 import org.lightfire.vteme.component.upload.FileUploadOperation;
+import org.lightfire.vteme.component.upload.VKFileLoadOperation;
 import org.lightfire.vteme.component.upload.VKFileUploadOperation;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
@@ -667,13 +669,14 @@ public class FileLoader extends BaseController {
         int type = MEDIA_DIR_CACHE;
 
         if (secureDocument != null) {
-            operation = new FileLoadOperation(secureDocument);
+            operation = new FileLoadOperationImpl(secureDocument);
             type = MEDIA_DIR_DOCUMENT;
         } else if (location != null) {
-            operation = new FileLoadOperation(imageLocation, parentObject, locationExt, locationSize);
+            operation = imageLocation.dc_id == -1 ? new VKFileLoadOperation(imageLocation, parentObject, locationExt, locationSize) :
+                    new FileLoadOperationImpl(imageLocation, parentObject, locationExt, locationSize);
             type = MEDIA_DIR_IMAGE;
         } else if (document != null) {
-            operation = new FileLoadOperation(document, parentObject);
+            operation = new FileLoadOperationImpl(document, parentObject);
             if (MessageObject.isVoiceDocument(document)) {
                 type = MEDIA_DIR_AUDIO;
             } else if (MessageObject.isVideoDocument(document)) {
@@ -682,7 +685,7 @@ public class FileLoader extends BaseController {
                 type = MEDIA_DIR_DOCUMENT;
             }
         } else if (webDocument != null) {
-            operation = new FileLoadOperation(currentAccount, webDocument);
+            operation = new FileLoadOperationImpl(currentAccount, webDocument);
             if (webDocument.location != null) {
                 type = MEDIA_DIR_CACHE;
             } else if (MessageObject.isVoiceWebDocument(webDocument)) {

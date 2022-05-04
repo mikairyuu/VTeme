@@ -11,6 +11,7 @@ package org.telegram.messenger;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
+import org.lightfire.vteme.component.upload.FileLoadOperation;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLObject;
@@ -28,15 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipException;
 
-public class FileLoadOperation {
-
-    protected static class RequestInfo {
-        private int requestToken;
-        private int offset;
-        private TLRPC.TL_upload_file response;
-        private TLRPC.TL_upload_webFile responseWeb;
-        private TLRPC.TL_upload_cdnFile responseCdn;
-    }
+class FileLoadOperationImpl extends FileLoadOperation {
 
     public static class Range {
         private int start;
@@ -173,13 +166,7 @@ public class FileLoadOperation {
 
     private int currentType;
 
-    public interface FileLoadOperationDelegate {
-        void didFinishLoadingFile(FileLoadOperation operation, File finalFile);
-        void didFailedLoadingFile(FileLoadOperation operation, int state);
-        void didChangedLoadProgress(FileLoadOperation operation, long uploadedSize, long totalSize);
-    }
-
-    public FileLoadOperation(ImageLocation imageLocation, Object parent, String extension, int size) {
+    public FileLoadOperationImpl(ImageLocation imageLocation, Object parent, String extension, int size) {
         parentObject = parent;
         forceBig = imageLocation.imageType == FileLoader.IMAGE_TYPE_ANIMATION;
         if (imageLocation.isEncrypted()) {
@@ -250,7 +237,7 @@ public class FileLoadOperation {
         ext = extension != null ? extension : "jpg";
     }
 
-    public FileLoadOperation(SecureDocument secureDocument) {
+    public FileLoadOperationImpl(SecureDocument secureDocument) {
         location = new TLRPC.TL_inputSecureFileLocation();
         location.id = secureDocument.secureFile.id;
         location.access_hash = secureDocument.secureFile.access_hash;
@@ -261,7 +248,7 @@ public class FileLoadOperation {
         ext = ".jpg";
     }
 
-    public FileLoadOperation(int instance, WebFile webDocument) {
+    public FileLoadOperationImpl(int instance, WebFile webDocument) {
         currentAccount = instance;
         webFile = webDocument;
         webLocation = webDocument.location;
@@ -281,7 +268,7 @@ public class FileLoadOperation {
         ext = ImageLoader.getHttpUrlExtension(webDocument.url, defaultExt);
     }
 
-    public FileLoadOperation(TLRPC.Document documentLocation, Object parent) {
+    public FileLoadOperationImpl(TLRPC.Document documentLocation, Object parent) {
         try {
             parentObject = parent;
             if (documentLocation instanceof TLRPC.TL_documentEncrypted) {
@@ -491,11 +478,11 @@ public class FileLoadOperation {
         }
     }
 
-    protected File getCacheFileFinal() {
+    public File getCacheFileFinal() {
         return cacheFileFinal;
     }
 
-    protected File getCurrentFile() {
+    public File getCurrentFile() {
         final CountDownLatch countDownLatch = new CountDownLatch(1);
         final File[] result = new File[1];
         Utilities.stageQueue.postRunnable(() -> {
@@ -546,7 +533,7 @@ public class FileLoadOperation {
         }
     }
 
-    protected float getDownloadedLengthFromOffset(final float progress) {
+    public float getDownloadedLengthFromOffset(final float progress) {
         ArrayList<Range> ranges = notLoadedBytesRangesCopy;
         if (totalBytesCount == 0 || ranges == null) {
             return 0;
@@ -554,7 +541,7 @@ public class FileLoadOperation {
         return progress + getDownloadedLengthFromOffsetInternal(ranges, (int) (totalBytesCount * progress), totalBytesCount) / (float) totalBytesCount;
     }
 
-    protected int[] getDownloadedLengthFromOffset(final int offset, final int length) {
+    public int[] getDownloadedLengthFromOffset(final int offset, final int length) {
         final CountDownLatch countDownLatch = new CountDownLatch(1);
         final int[] result = new int[2];
         Utilities.stageQueue.postRunnable(() -> {
@@ -576,7 +563,7 @@ public class FileLoadOperation {
         return fileName;
     }
 
-    protected void removeStreamListener(final FileLoadOperationStream operation) {
+    public void removeStreamListener(final FileLoadOperationStream operation) {
         Utilities.stageQueue.postRunnable(() -> {
             if (streamListeners == null) {
                 return;
@@ -980,7 +967,7 @@ public class FileLoadOperation {
 
     public void updateProgress() {
         if (delegate != null && downloadedBytes != totalBytesCount && totalBytesCount > 0) {
-            delegate.didChangedLoadProgress(FileLoadOperation.this, downloadedBytes, totalBytesCount);
+            delegate.didChangedLoadProgress(FileLoadOperationImpl.this, downloadedBytes, totalBytesCount);
         }
     }
 
@@ -1265,7 +1252,7 @@ public class FileLoadOperation {
                 }
             }
         }
-        delegate.didFinishLoadingFile(FileLoadOperation.this, cacheFileFinal);
+        delegate.didFinishLoadingFile(FileLoadOperationImpl.this, cacheFileFinal);
     }
 
     private void delayRequestInfo(RequestInfo requestInfo) {
@@ -1361,7 +1348,7 @@ public class FileLoadOperation {
         }, null, null, 0, datacenterId, ConnectionsManager.ConnectionTypeGeneric, true);
     }
 
-    protected boolean processRequestResult(RequestInfo requestInfo, TLRPC.TL_error error) {
+    public boolean processRequestResult(RequestInfo requestInfo, TLRPC.TL_error error) {
         if (state != stateDownloading) {
             if (BuildVars.DEBUG_VERSION) {
                 FileLog.d("trying to write to finished file " + cacheFileFinal + " offset " + requestInfo.offset);
@@ -1546,7 +1533,7 @@ public class FileLoadOperation {
                     }
                     if (totalBytesCount > 0 && state == stateDownloading) {
                         copyNotLoadedRanges();
-                        delegate.didChangedLoadProgress(FileLoadOperation.this, downloadedBytes, totalBytesCount);
+                        delegate.didChangedLoadProgress(FileLoadOperationImpl.this, downloadedBytes, totalBytesCount);
                     }
                 }
 
@@ -1624,14 +1611,14 @@ public class FileLoadOperation {
         return false;
     }
 
-    protected void onFail(boolean thread, final int reason) {
+    public void onFail(boolean thread, final int reason) {
         cleanup();
         state = stateFailed;
         if (delegate != null) {
             if (thread) {
-                Utilities.stageQueue.postRunnable(() -> delegate.didFailedLoadingFile(FileLoadOperation.this, reason));
+                Utilities.stageQueue.postRunnable(() -> delegate.didFailedLoadingFile(FileLoadOperationImpl.this, reason));
             } else {
-                delegate.didFailedLoadingFile(FileLoadOperation.this, reason);
+                delegate.didFailedLoadingFile(FileLoadOperationImpl.this, reason);
             }
         }
     }
@@ -1697,7 +1684,7 @@ public class FileLoadOperation {
         FileRefController.getInstance(currentAccount).requestReference(parentObject, location, this, requestInfo);
     }
 
-    protected void startDownloadRequest() {
+    public void startDownloadRequest() {
         if (paused || reuploadingCdn ||
                 state != stateDownloading ||
                 streamPriorityStartOffset == 0 && (

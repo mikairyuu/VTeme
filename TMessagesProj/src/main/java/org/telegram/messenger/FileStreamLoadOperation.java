@@ -16,6 +16,7 @@ import com.google.android.exoplayer2.upstream.BaseDataSource;
 import com.google.android.exoplayer2.upstream.DataSpec;
 import com.google.android.exoplayer2.upstream.TransferListener;
 
+import org.lightfire.vteme.component.upload.FileLoadOperation;
 import org.telegram.tgnet.TLRPC;
 
 import java.io.EOFException;
