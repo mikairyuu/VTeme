@@ -677,7 +677,8 @@ public class FileLoader extends BaseController {
                     new FileLoadOperationImpl(imageLocation, parentObject, locationExt, locationSize);
             type = MEDIA_DIR_IMAGE;
         } else if (document != null) {
-            operation = new FileLoadOperationImpl(document, parentObject);
+            operation = document.dc_id == -1 ? new VKFileLoadOperation(document, parentObject) :
+                    new FileLoadOperationImpl(document, parentObject);
             if (MessageObject.isVoiceDocument(document)) {
                 type = MEDIA_DIR_AUDIO;
             } else if (MessageObject.isVideoDocument(document)) {

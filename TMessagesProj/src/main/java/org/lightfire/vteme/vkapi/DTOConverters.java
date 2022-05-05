@@ -11,6 +11,7 @@ import com.vk.sdk.api.messages.dto.MessagesGetByConversationMessageIdExtendedRes
 import com.vk.sdk.api.messages.dto.MessagesGetConversationsResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetHistoryExtendedResponse;
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse;
+import com.vk.sdk.api.messages.dto.MessagesGraffiti;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
 import com.vk.sdk.api.messages.dto.MessagesMessageAction;
 import com.vk.sdk.api.messages.dto.MessagesMessageAttachment;
@@ -55,9 +56,9 @@ public class DTOConverters {
         }
         List<MessagesMessageAttachment> attachments = message.getAttachments();
         if (attachments != null && attachments.size() != 0) {
-            if (attachments.get(0).getType().equals("photo")) {
-                resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_MEDIA;
-                PhotosPhoto photo = attachments.get(0).getPhoto();
+            MessagesMessageAttachment attachment = attachments.get(0);
+            if (attachment.getType().equals("photo")) {
+                PhotosPhoto photo = attachment.getPhoto();
                 TLRPC.MessageMedia media = makeVk(new TLRPC.TL_messageMediaPhoto());
                 media.flags = 1;
                 media.photo = makeVk(new TLRPC.TL_photo());
@@ -72,27 +73,41 @@ public class DTOConverters {
                     photoSize.w = size.getWidth();
                     photoSize.h = size.getHeight();
                     photoSize.url = size.getUrl();
-                    if (photoSize.w <= 100 && photoSize.h <= 100) {
-                        photoSize.type = "s";
-                    } else if (photoSize.w <= 320 && photoSize.h <= 320) {
-                        photoSize.type = "m";
-                    } else if (photoSize.w <= 800 && photoSize.h <= 800) {
-                        photoSize.type = "x";
-                    } else if (photoSize.w <= 1280 && photoSize.h <= 1280) {
-                        photoSize.type = "y";
-                    } else {
-                        photoSize.type = "w";
-                    }
-                    TLRPC.TL_VKfileLocation location = new TLRPC.TL_VKfileLocation();
-                    location.url = photoSize.url;
-                    location.volume_id = Integer.MIN_VALUE;
-                    location.dc_id = -1;
-                    location.local_id = SharedConfig.getLastLocalId();
-                    location.file_reference = new byte[0];
-                    photoSize.location = location;
+                    makePhotoSize(photoSize);
                     media.photo.sizes.add(photoSize);
                 }
+                resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_MEDIA;
                 resMsg.media = media;
+            } else if (attachment.getType().equals("graffiti")) {
+                MessagesGraffiti graffiti = attachment.getGraffiti();
+                TLRPC.MessageMedia media = makeVk(new TLRPC.TL_messageMediaDocument());
+                resMsg.media = media;
+                media.flags = 1;
+                resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_MEDIA;
+                media.document = new TLRPC.TL_document();
+                media.document.dc_id = -1;
+                media.document.flags = 1;
+                TLRPC.TL_VKphotoSize photoSize = new TLRPC.TL_VKphotoSize();
+                photoSize.w = graffiti.getWidth();
+                photoSize.h = graffiti.getHeight();
+                photoSize.url = graffiti.getUrl();
+                makePhotoSize(photoSize);
+                media.document.id = graffiti.getId();
+                media.document.thumbs.add(photoSize);
+                media.document.file_reference = new byte[0];
+                media.document.date = resMsg.date;
+                media.document.mime_type = "image/webp";
+                media.document.attributes = new ArrayList<>();
+                TLRPC.DocumentAttribute stickerAttr = new TLRPC.TL_documentAttributeSticker();
+                stickerAttr.stickerset = new TLRPC.TL_inputStickerSetEmpty();
+                media.document.attributes.add(stickerAttr);
+                TLRPC.DocumentAttribute fileNameAttr = new TLRPC.TL_documentAttributeFilename();
+                fileNameAttr.file_name = "sticker.webp";
+                media.document.attributes.add(fileNameAttr);
+                TLRPC.DocumentAttribute imageSizeAttr = new TLRPC.TL_documentAttributeImageSize();
+                imageSizeAttr.w = photoSize.w;
+                imageSizeAttr.h = photoSize.h;
+                media.document.attributes.add(imageSizeAttr);
             }
         }
         if (isChat)
@@ -103,6 +118,27 @@ public class DTOConverters {
         resMsg.from_id.user_id = message.getFromId().getValue();
         resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_FROM_ID;
         return resMsg;
+    }
+
+    private static void makePhotoSize(TLRPC.TL_VKphotoSize photoSize) {
+        if (photoSize.w <= 100 && photoSize.h <= 100) {
+            photoSize.type = "s";
+        } else if (photoSize.w <= 320 && photoSize.h <= 320) {
+            photoSize.type = "m";
+        } else if (photoSize.w <= 800 && photoSize.h <= 800) {
+            photoSize.type = "x";
+        } else if (photoSize.w <= 1280 && photoSize.h <= 1280) {
+            photoSize.type = "y";
+        } else {
+            photoSize.type = "w";
+        }
+        TLRPC.TL_VKfileLocation location = new TLRPC.TL_VKfileLocation();
+        location.url = photoSize.url;
+        location.volume_id = Integer.MIN_VALUE;
+        location.dc_id = -1;
+        location.local_id = SharedConfig.getLastLocalId();
+        location.file_reference = new byte[0];
+        photoSize.location = location;
     }
 
     private static TLRPC.MessageAction VKActionConverter(MessagesMessageAction action) {
