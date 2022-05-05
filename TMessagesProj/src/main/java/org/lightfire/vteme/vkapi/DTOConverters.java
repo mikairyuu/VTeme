@@ -250,7 +250,7 @@ public class DTOConverters {
         photo.photo_big = new TLRPC.TL_VKfileLocation();
         photo.photo_id = Utils.hash(user.getPhoto100());
         ((TLRPC.TL_VKfileLocation) photo.photo_small).url = user.getPhoto100();
-        ((TLRPC.TL_VKfileLocation) photo.photo_big).url = user.getPhotoBig();
+        ((TLRPC.TL_VKfileLocation) photo.photo_big).url = user.getPhotoMax();
         photo.photo_small.volume_id = photo.photo_big.volume_id = -photo.photo_id;
         photo.photo_small.local_id = 'a';
         photo.photo_big.local_id = 'c';

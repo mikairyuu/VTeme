@@ -3481,13 +3481,13 @@ public class MessagesController extends BaseController implements NotificationCe
 
     public void loadFullChat(long chatId, int classGuid, boolean force) {
         boolean loaded = loadedFullChats.contains(chatId);
-        if (loadingFullChats.contains(chatId) || !force && loaded || getChat(chatId).isVK) {
+        TLRPC.Chat chat = getChat(chatId);
+        if (loadingFullChats.contains(chatId) || !force && loaded || chat.isVK) {
             return;
         }
         loadingFullChats.add(chatId);
         TLObject request;
         long dialogId = -chatId;
-        TLRPC.Chat chat = getChat(chatId);
         if (ChatObject.isChannel(chat)) {
             TLRPC.TL_channels_getFullChannel req = new TLRPC.TL_channels_getFullChannel();
             req.channel = getInputChannel(chat);
@@ -3606,7 +3606,7 @@ public class MessagesController extends BaseController implements NotificationCe
         if(user.isVK){
             VK.execute(new UsersService().usersGet(Collections.singletonList(new UserId(user.id)),
                     Arrays.asList(UsersFields.STATUS, UsersFields.LAST_SEEN, UsersFields.DOMAIN,
-                            UsersFields.BLACKLISTED_BY_ME, UsersFields.PHOTO_100, UsersFields.PHOTO_BIG),null),
+                            UsersFields.BLACKLISTED_BY_ME, UsersFields.PHOTO_100, UsersFields.PHOTO_MAX),null),
                     new VKApiCallback<List<UsersUserFull>>() {
                 @Override
                 public void success(List<UsersUserFull> usersUserFulls) {
