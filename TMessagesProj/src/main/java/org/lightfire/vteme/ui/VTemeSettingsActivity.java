@@ -113,6 +113,7 @@ public class VTemeSettingsActivity extends BaseFragment {
                 ArrayList<VKScope> VkStuff = new ArrayList<>();
                 VkStuff.add(VKScope.MESSAGES);
                 VkStuff.add(VKScope.PHOTOS);
+                VkStuff.add(VKScope.DOCS);
                 VK.login(getParentActivity(), VkStuff);
             } else if (position == channelRow) {
                 MessagesController.getInstance(currentAccount).openByUserName("VTeme", this, 1);

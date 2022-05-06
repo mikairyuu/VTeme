@@ -265,7 +265,7 @@ public class FileLoader extends BaseController {
                     return;
                 }
             }
-            boolean isVK = (type & 0x1) == 1;
+            boolean isVK = (type & 8) != 0;
             int esimated = estimatedSize;
             int peerId = 0;
             if (isVK) {

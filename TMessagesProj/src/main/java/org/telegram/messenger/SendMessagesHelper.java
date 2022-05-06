@@ -49,6 +49,8 @@ import com.vk.sdk.api.base.dto.BaseBoolInt;
 import com.vk.sdk.api.messages.MessagesService;
 
 import org.json.JSONObject;
+import org.lightfire.vteme.component.upload.FileLoadOperation;
+import org.lightfire.vteme.component.upload.FileUploadOperation;
 import org.telegram.messenger.audioinfo.AudioInfo;
 import org.telegram.messenger.support.SparseLongArray;
 import org.telegram.tgnet.ConnectionsManager;
@@ -4077,6 +4079,19 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     } else if (type == 6) {
                         performSendMessageRequest(reqSend, newMsgObj, originalPath, delayedMessage, parentObject, params, scheduleDate != 0);
                     } else if (type == 7) {
+                        if (isVK) {
+                            if(document.file_name_fixed.equals("sticker.webp")){
+                                delayedMessage = new DelayedMessage(peer);
+                                delayedMessage.obj = newMsgObj;
+                                delayedMessage.type = 2;
+                                delayedMessage.sendRequest = reqSend;
+                                delayedMessage.obj.messageOwner.attachPath = FileLoader.getPathToAttach(FileLoader.getClosestPhotoSizeWithSize(document.thumbs, 90), "webp", true).getPath();
+                                performMediaUpload = true;
+                                ((TLRPC.TL_messages_sendMedia) reqSend).media.flags = -2;
+                            } else {
+                                ((TLRPC.TL_messages_sendMedia) reqSend).media.flags = -1;
+                            }
+                        }
                         if (performMediaUpload && delayedMessage != null) {
                             performSendDelayedMessage(delayedMessage);
                         } else {
@@ -4492,7 +4507,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     putToDelayedMessages(location, message);
                     TLRPC.InputPeer peer = getMessagesController().getInputPeer(message.peer);
                     getFileLoader().uploadFile(location, false, true, (int) (peer.isVK ? (peer.user_id == 0 ? peer.chat_id : peer.user_id) : 0
-                    ), peer.isVK ? ConnectionsManager.FileTypePhoto | 0x1 : ConnectionsManager.FileTypePhoto, false);
+                    ), peer.isVK ? ConnectionsManager.FileTypePhoto | 8 : ConnectionsManager.FileTypePhoto, false);
                     putToUploadingMessages(message.obj);
                 } else {
                     String location = FileLoader.getPathToAttach(message.photoSize).toString();
@@ -4608,7 +4623,12 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     if (media.file == null) {
                         String location = message.obj.messageOwner.attachPath;
                         putToDelayedMessages(location, message);
-                        getFileLoader().uploadFile(location, message.sendRequest == null, false, ConnectionsManager.FileTypeFile);
+                        if(media.flags < 0) {
+                            getFileLoader().uploadFile(location, false, true, (int) message.peer,
+                                    media.flags == -1 ? 24 : 8, false);
+                        } else {
+                            getFileLoader().uploadFile(location, message.sendRequest == null, false, ConnectionsManager.FileTypeFile);
+                        }
                         putToUploadingMessages(message.obj);
                     } else if (media.thumb == null && message.photoSize != null && !(message.photoSize instanceof TLRPC.TL_photoStrippedSize)) {
                         String location = FileLoader.getDirectory(FileLoader.MEDIA_DIR_CACHE) + "/" + message.photoSize.location.volume_id + "_" + message.photoSize.location.local_id + ".jpg";
@@ -5301,7 +5321,6 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         sentMessages.add(newMsgObj);
 
                         getStatsController().incrementSentItemsCount(ApplicationLoader.getCurrentNetworkType(), StatsController.TYPE_MESSAGES, 1);
-                        newMsgObj.send_state = MessageObject.MESSAGE_SEND_STATE_SENT;
 
                         getNotificationCenter().postNotificationName(NotificationCenter.messageReceivedByServer, oldId, newMsgObj.id, newMsgObj, newMsgObj.dialog_id, 0L, existFlags, scheduled);
                         getMessagesStorage().getStorageQueue().postRunnable(() -> {
@@ -5342,9 +5361,11 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                     (((TLRPC.TL_messages_editMessage) req).media) : (req instanceof TLRPC.TL_messages_sendMedia
                     ? ((TLRPC.TL_messages_sendMedia) req).media : null);
             if (media != null) {
-                if (media instanceof TLRPC.TL_inputMediaUploadedPhoto) {
-                    TLRPC.TL_inputVKFile file = (TLRPC.TL_inputVKFile) media.file;
+                TLRPC.TL_inputVKFile file = (TLRPC.TL_inputVKFile) media.file;
+                if (media instanceof TLRPC.TL_inputMediaUploadedPhoto || media.flags == -2) {
                     attachment = "photo" + file.owner_id + '_' + file.id;
+                } else if(media.flags == -1) {
+                    attachment = "doc" + file.owner_id + '_' + file.id;
                 }
             }
 

@@ -245,19 +245,21 @@ public class DTOConverters {
             retChat.id = ret_dialog.id;
             ret_dialog.id = -ret_dialog.id;
             retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
-            retChat.flags = retChat.flags | 262144;
-            retChat.photo = new TLRPC.TL_chatPhoto_layer115();
-            retChat.photo.dc_id = -1;
-            retChat.access_hash = -1;
-            retChat.photo.photo_small = new TLRPC.TL_VKfileLocation();
-            retChat.photo.photo_big = new TLRPC.TL_VKfileLocation();
-            retChat.photo.photo_id = Utils.hash(chatSettings.getPhoto().getPhoto100());
-            retChat.photo.photo_small.volume_id = retChat.photo.photo_big.volume_id = -retChat.photo.photo_id;
-            retChat.photo.photo_small.local_id = 'a';
-            retChat.photo.photo_big.local_id = 'c';
-            retChat.photo.photo_id = retChat.id;
-            ((TLRPC.TL_VKfileLocation) retChat.photo.photo_small).url = chatSettings.getPhoto().getPhoto100();
-            ((TLRPC.TL_VKfileLocation) retChat.photo.photo_big).url = chatSettings.getPhoto().getPhoto200();
+            if (chatSettings.getPhoto() != null){
+                retChat.flags = retChat.flags | 262144;
+                retChat.photo = new TLRPC.TL_chatPhoto_layer115();
+                retChat.photo.dc_id = -1;
+                retChat.access_hash = -1;
+                retChat.photo.photo_small = new TLRPC.TL_VKfileLocation();
+                retChat.photo.photo_big = new TLRPC.TL_VKfileLocation();
+                retChat.photo.photo_id = Utils.hash(chatSettings.getPhoto().getPhoto100());
+                retChat.photo.photo_small.volume_id = retChat.photo.photo_big.volume_id = -retChat.photo.photo_id;
+                retChat.photo.photo_small.local_id = 'a';
+                retChat.photo.photo_big.local_id = 'c';
+                retChat.photo.photo_id = retChat.id;
+                ((TLRPC.TL_VKfileLocation) retChat.photo.photo_small).url = chatSettings.getPhoto().getPhoto100();
+                ((TLRPC.TL_VKfileLocation) retChat.photo.photo_big).url = chatSettings.getPhoto().getPhoto200();
+            }
             retPair = new Pair<>(ret_dialog, retChat);
         } else {
             retPair = new Pair<>(ret_dialog, null);
