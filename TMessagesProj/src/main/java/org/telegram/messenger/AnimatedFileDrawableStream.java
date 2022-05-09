@@ -1,6 +1,6 @@
 package org.telegram.messenger;
 
-import org.lightfire.vteme.component.upload.FileLoadOperation;
+import org.lightfire.vteme.component.load.FileLoadOperation;
 import org.telegram.tgnet.TLRPC;
 
 import java.util.concurrent.CountDownLatch;

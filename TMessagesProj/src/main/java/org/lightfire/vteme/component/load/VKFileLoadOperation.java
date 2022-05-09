@@ -1,4 +1,4 @@
-package org.lightfire.vteme.component.upload;
+package org.lightfire.vteme.component.load;
 
 import androidx.annotation.NonNull;
 

@@ -12,10 +12,10 @@ import android.text.TextUtils;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
-import org.lightfire.vteme.component.upload.FileLoadOperation;
-import org.lightfire.vteme.component.upload.FileUploadOperation;
-import org.lightfire.vteme.component.upload.VKFileLoadOperation;
-import org.lightfire.vteme.component.upload.VKFileUploadOperation;
+import org.lightfire.vteme.component.load.FileLoadOperation;
+import org.lightfire.vteme.component.load.FileUploadOperation;
+import org.lightfire.vteme.component.load.VKFileLoadOperation;
+import org.lightfire.vteme.component.load.VKFileUploadOperation;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 

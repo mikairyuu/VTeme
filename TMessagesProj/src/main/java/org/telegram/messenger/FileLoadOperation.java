@@ -11,7 +11,7 @@ package org.telegram.messenger;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
-import org.lightfire.vteme.component.upload.FileLoadOperation;
+import org.lightfire.vteme.component.load.FileLoadOperation;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLObject;

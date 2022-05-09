@@ -15,7 +15,7 @@ import android.net.Uri;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
 
-import org.lightfire.vteme.component.upload.FileUploadOperation;
+import org.lightfire.vteme.component.load.FileUploadOperation;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
 import org.telegram.tgnet.TLObject;

@@ -1,4 +1,4 @@
-package org.lightfire.vteme.component.upload;
+package org.lightfire.vteme.component.load;
 
 import org.telegram.tgnet.TLRPC;
 

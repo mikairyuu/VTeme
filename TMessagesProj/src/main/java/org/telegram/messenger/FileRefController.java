@@ -2,7 +2,7 @@ package org.telegram.messenger;
 
 import android.os.SystemClock;
 
-import org.lightfire.vteme.component.upload.FileLoadOperation;
+import org.lightfire.vteme.component.load.FileLoadOperation;
 import org.telegram.tgnet.RequestDelegate;
 import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;

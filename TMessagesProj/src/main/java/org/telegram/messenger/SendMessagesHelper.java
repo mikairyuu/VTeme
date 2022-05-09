@@ -49,8 +49,6 @@ import com.vk.sdk.api.base.dto.BaseBoolInt;
 import com.vk.sdk.api.messages.MessagesService;
 
 import org.json.JSONObject;
-import org.lightfire.vteme.component.upload.FileLoadOperation;
-import org.lightfire.vteme.component.upload.FileUploadOperation;
 import org.telegram.messenger.audioinfo.AudioInfo;
 import org.telegram.messenger.support.SparseLongArray;
 import org.telegram.tgnet.ConnectionsManager;
