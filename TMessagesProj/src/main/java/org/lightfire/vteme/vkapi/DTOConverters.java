@@ -134,7 +134,7 @@ public class DTOConverters {
         }
         TLRPC.TL_VKfileLocation location = new TLRPC.TL_VKfileLocation();
         location.url = photoSize.url;
-        location.volume_id = Integer.MIN_VALUE;
+        location.volume_id = Utils.hash(location.url);
         location.dc_id = -1;
         location.local_id = SharedConfig.getLastLocalId();
         location.file_reference = new byte[0];
