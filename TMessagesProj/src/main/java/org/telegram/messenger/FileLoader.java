@@ -673,7 +673,7 @@ public class FileLoader extends BaseController {
             operation = new FileLoadOperationImpl(secureDocument);
             type = MEDIA_DIR_DOCUMENT;
         } else if (location != null) {
-            operation = imageLocation.dc_id == -1 ? new VKFileLoadOperation(imageLocation, parentObject, locationExt, locationSize) :
+            operation = imageLocation.location instanceof TLRPC.TL_VKfileLocation ? new VKFileLoadOperation(imageLocation, parentObject, locationExt, locationSize) :
                     new FileLoadOperationImpl(imageLocation, parentObject, locationExt, locationSize);
             type = MEDIA_DIR_IMAGE;
         } else if (document != null) {
