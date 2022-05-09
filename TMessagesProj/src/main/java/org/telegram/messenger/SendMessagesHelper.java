@@ -29,6 +29,7 @@ import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.util.Pair;
 import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -880,6 +881,10 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                                 if (media.thumb == null && message.photoSize != null && message.photoSize.location != null) {
                                     performSendDelayedMessage(message);
                                 } else {
+                                    if (media.file instanceof TLRPC.TL_inputVKFile && media.flags == -2) {
+                                        TLRPC.TL_inputMediaDocument mediaDocument = (TLRPC.TL_inputMediaDocument) media;
+                                        getMessagesStorage().putVKCachedSticker(mediaDocument.id.id, file.id, ((TLRPC.TL_inputVKFile) file).owner_id);
+                                    }
                                     performSendMessageRequest(message.sendRequest, message.obj, message.originalPath, null, message.parentObject, null, message.scheduled);
                                 }
                             } else {
@@ -4078,16 +4083,25 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         performSendMessageRequest(reqSend, newMsgObj, originalPath, delayedMessage, parentObject, params, scheduleDate != 0);
                     } else if (type == 7) {
                         if (isVK) {
-                            if(document.file_name_fixed.equals("sticker.webp")){
-                                delayedMessage = new DelayedMessage(peer);
-                                delayedMessage.obj = newMsgObj;
-                                delayedMessage.type = 2;
-                                delayedMessage.sendRequest = reqSend;
-                                delayedMessage.obj.messageOwner.attachPath = FileLoader.getPathToAttach(FileLoader.getClosestPhotoSizeWithSize(document.thumbs, 90), "webp", true).getPath();
-                                performMediaUpload = true;
-                                ((TLRPC.TL_messages_sendMedia) reqSend).media.flags = -2;
+                            TLRPC.TL_messages_sendMedia mediaRequest = (TLRPC.TL_messages_sendMedia) reqSend;
+                            if (document.file_name_fixed.equals("sticker.webp")) {
+                                Pair<Long,Long> pair = getMessagesStorage().getVKCachedSticker(document.id);
+                                if (pair != null) {
+                                    TLRPC.TL_inputVKFile file = new TLRPC.TL_inputVKFile();
+                                    file.id = pair.first;
+                                    file.owner_id = pair.second;
+                                    mediaRequest.media.file = file;
+                                } else {
+                                    delayedMessage = new DelayedMessage(peer);
+                                    delayedMessage.obj = newMsgObj;
+                                    delayedMessage.type = 2;
+                                    delayedMessage.sendRequest = reqSend;
+                                    delayedMessage.obj.messageOwner.attachPath = FileLoader.getPathToAttach(FileLoader.getClosestPhotoSizeWithSize(document.thumbs, 90), "webp", true).getPath();
+                                    performMediaUpload = true;
+                                }
+                                mediaRequest.media.flags = -2;
                             } else {
-                                ((TLRPC.TL_messages_sendMedia) reqSend).media.flags = -1;
+                                mediaRequest.media.flags = -1;
                             }
                         }
                         if (performMediaUpload && delayedMessage != null) {
@@ -4623,7 +4637,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                         putToDelayedMessages(location, message);
                         if(media.flags < 0) {
                             getFileLoader().uploadFile(location, false, true, (int) message.peer,
-                                    media.flags == -1 ? 24 : 8, false);
+                                    media.flags == -1 ? 24 : 40, false);
                         } else {
                             getFileLoader().uploadFile(location, message.sendRequest == null, false, ConnectionsManager.FileTypeFile);
                         }
@@ -5396,7 +5410,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 }
                 newMsgObj.random_id = getNextRandomIntId();
                 VK.execute(new MessagesService().messagesSend(null, (int) newMsgObj.random_id, (int) peer_id,
-                        null, null, isChat ? (int) peer_id : null, null, newMsgObj.message,
+                        null, null, null, null, newMsgObj.message,
                         null, null, attachment, curReq.reply_to_msg_id, null, null, null,
                         null, null, null, null, null, null,
                         null, null, null), callback);

@@ -1,5 +1,8 @@
 package org.lightfire.vteme.component.load;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+
 import androidx.annotation.NonNull;
 
 import com.google.gson.JsonObject;
@@ -20,6 +23,8 @@ import org.telegram.messenger.Utilities;
 import org.telegram.tgnet.TLRPC;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
@@ -129,6 +134,24 @@ public class VKFileUploadOperation extends FileUploadOperation {
                 }
             });
         } else {
+            if ((currentType & 32) != 0) {
+                // Sending sticker
+                Bitmap bitmap = BitmapFactory.decodeFile(uploadingFilePath);
+                int w = bitmap.getWidth();
+                int h = bitmap.getHeight();
+                double scalingFactor = 320.0 / (w > 320 ? w : (Math.max(h, 320)));
+                if (scalingFactor != 1) {
+                    uploadingFilePath = "s_" + uploadingFilePath;
+                    try {
+                        FileOutputStream fos = new FileOutputStream(uploadingFilePath);
+                        Bitmap.createScaledBitmap(bitmap, (int) scalingFactor * w,
+                                (int) scalingFactor * h, true)
+                                .compress(Bitmap.CompressFormat.WEBP, 100, fos);
+                    } catch (FileNotFoundException e) {
+                        cancel();
+                    }
+                }
+            }
             VK.execute(new PhotosService().photosGetMessagesUploadServer(peerId), new VKApiCallback<PhotosPhotoUpload>() {
                 @Override
                 public void success(PhotosPhotoUpload photosPhotoUpload) {

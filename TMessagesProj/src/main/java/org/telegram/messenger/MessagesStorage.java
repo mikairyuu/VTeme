@@ -433,6 +433,9 @@ public class MessagesStorage extends BaseController {
                 database.executeFast("CREATE TABLE downloading_documents(data BLOB, hash INTEGER, id INTEGER, state INTEGER, date INTEGER, PRIMARY KEY(hash, id));").stepThis().dispose();
 
                 database.executeFast("CREATE TABLE attach_menu_bots(data BLOB, hash INTEGER, date INTEGER);").stepThis().dispose();
+
+                database.executeFast("CREATE TABLE sticker_cache(sticker_id INTEGER, item_id INTEGER, owner_id INTEGER, PRIMARY KEY(sticker_id));").stepThis().dispose();
+
                 //version
                 database.executeFast("PRAGMA user_version = " + LAST_DB_VERSION).stepThis().dispose();
             } else {
@@ -12634,6 +12637,39 @@ public class MessagesStorage extends BaseController {
             FileLog.e(e);
         }
         return messageIds;
+    }
+
+    public Pair<Long, Long> getVKCachedSticker(long stickerId) {
+        Pair<Long, Long> retPair = null;
+        try {
+            SQLiteCursor cursor = database.queryFinalized(String.format(Locale.US, "SELECT item_id, owner_id FROM sticker_cache WHERE sticker_id = %d", stickerId));
+            try {
+                if (cursor.next()) {
+                    retPair = new Pair<>(cursor.longValue(0), cursor.longValue(1));
+                }
+                cursor.dispose();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        return retPair;
+    }
+
+    public void putVKCachedSticker(long stickerId, long itemId, long ownerId) {
+        storageQueue.postRunnable(() -> {
+            try {
+                SQLitePreparedStatement state = database.executeFast("REPLACE INTO sticker_cache VALUES(?, ?, ?)");
+                state.bindLong(1, stickerId);
+                state.bindLong(2, itemId);
+                state.bindLong(3, ownerId);
+                state.step();
+                state.dispose();
+            } catch (Exception e) {
+                FileLog.e(e);
+            }
+        });
     }
 
     public void updateUnreadReactionsCount(long dialogId, int count) {
