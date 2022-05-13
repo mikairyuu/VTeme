@@ -6,10 +6,14 @@ import com.google.gson.GsonBuilder
 import com.vk.api.sdk.VK
 import com.vk.api.sdk.VKApiCallback
 import com.vk.sdk.api.messages.MessagesService
+import com.vk.sdk.api.messages.dto.MessagesGetByIdExtendedResponse
 import com.vk.sdk.api.messages.dto.MessagesGetLongPollHistoryResponse
 import com.vk.sdk.api.messages.dto.MessagesLongpollParams
 import com.vk.sdk.api.users.dto.UsersFields
-import okhttp3.*
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.Request
+import okhttp3.Response
 import org.lightfire.vteme.VTemeController
 import org.lightfire.vteme.vkapi.DTOConverters
 import org.lightfire.vteme.vkapi.longpoll.DTO.*
@@ -54,8 +58,8 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     }
                     if (messagesStorage.vkLastTs == result.ts) {
                         if (onSuccessInit) startPolling()
+                        connectionsManager.setIsUpdating(false)
                     } else {
-                        connectionsManager.setIsUpdating(true)
                         getHistoryDiff(result.ts, result.pts!!) {
                             connectionsManager.setIsUpdating(false)
                             if (it) {
@@ -194,18 +198,22 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
         if (updates.ts == -1) {
             initLongPoll(true)
         } else {
-            val time = connectionsManager.currentTime
-            val updatesRest = arrayListOf<TLRPC.Update>()
+            val miscUpdates = arrayListOf<TLRPC.Update>()
+            val messagesToRefetch = arrayListOf<Int>()
+            val messagesToPut = arrayListOf<TLRPC.Message>()
+            var pollingDelayed: Boolean
             var missingData = false
             outer@ for (update in updates.updates) {
                 when (update) {
                     is NewMessageAdded -> {
                         if (update.extraFields == null) return
-                        if (update.extraFields!!.attachments?.has_forwards == true) {
-                            missingData = true
-                            break@outer
+                        if (update.extraFields!!.attachments?.has_forwards == true ||
+                            update.extraFields?.attachments?.items?.isEmpty() == false
+                        ) {
+                            messagesToRefetch.add(update.message_id)
+                            continue
                         }
-                        if (update.extraFields!!.attachments?.source_act != null) return
+                        if (update.extraFields!!.attachments?.source_act != null) missingData = true
                         val newMsg = DTOConverters.makeVk(TLRPC.TL_message())
                         val peerId = update.extraFields!!.peer_id.toLong()
                         val isChat = peerId >= 2000000000
@@ -217,9 +225,7 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             missingData = true
                         if (isChat && !messagesController.users.containsKey(from_id))
                             missingData = true
-                        if (missingData) {
-                            break@outer
-                        }
+                        if (missingData) break@outer
                         newMsg.date = update.extraFields!!.timestamp!!
                         newMsg.message = update.extraFields!!.text
                         newMsg.from_id = TLRPC.TL_peerUser().apply { user_id = from_id }
@@ -235,24 +241,6 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             newMsg.reply_to.reply_to_msg_id =
                                 update.extraFields!!.attachments?.reply_to!!
                         }
-                        if (update.extraFields!!.attachments?.items!!.isNotEmpty()) {
-                            for (attachment in update.extraFields!!.attachments!!.items!!) {
-                                when (attachment) {
-                                    is PhotoAttachment -> {
-                                        newMsg.flags = newMsg.flags or TLRPC.MESSAGE_FLAG_HAS_MEDIA
-                                        val media = TLRPC.TL_messageMediaPhoto()
-                                        media.flags = 1
-                                        media.photo = TLRPC.TL_photo()
-                                        media.photo.id = attachment.item_id
-                                        media.photo.dc_id = -1
-                                        media.photo.user_id = attachment.owner_id
-                                        media.photo.sizes = arrayListOf(TLRPC.TL_VKphotoSize())
-                                        newMsg.media = media
-                                    }
-                                }
-                            }
-                        }
-
                         AndroidUtilities.runOnUIThread {
                             messagesController.updateInterfaceWithVKMessages(
                                 newMsg.dialog_id,
@@ -260,20 +248,11 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                             )
                             notificationCenter.postNotificationName(NotificationCenter.dialogsNeedReload)
                         }
-
-                        messagesStorage.putMessages(
-                            arrayListOf(newMsg),
-                            false,
-                            true,
-                            false,
-                            0,
-                            false
-                        )
                     }
 
                     is UsersTypeTextChat -> {
                         repeat(update.total_count) {
-                            updatesRest.add(TLRPC.TL_updateChatUserTyping().apply {
+                            miscUpdates.add(TLRPC.TL_updateChatUserTyping().apply {
                                 action = TLRPC.TL_sendMessageTypingAction()
                                 chat_id = update.peer_id.toLong()
                                 from_id = TLRPC.TL_peerUser()
@@ -289,26 +268,68 @@ class VKLongPollController private constructor(num: Int) : BaseController(num) {
                     }
                 }
                 val miscUpdate = convertMiscUpdate(update)
-                if (miscUpdate != null) updatesRest.add(miscUpdate)
+                if (miscUpdate != null) miscUpdates.add(miscUpdate)
             }
-            if (!missingData && updatesRest.isNotEmpty()) missingData =
-                missingData or !messagesController.processUpdateArray(
-                    updatesRest,
-                    null,
-                    null,
-                    false,
-                    time
-                )
-            if (missingData) {
+            pollingDelayed = !messagesToRefetch.isEmpty()
+
+            if (pollingDelayed && !missingData) {
                 stopPolling()
-                getHistoryDiff(updates.ts, updates.pts) {
-                    if (it) {
-                        startPolling()
-                    }
-                }
+                VK.execute(
+                    MessagesService().messagesGetByIdExtended(messagesToRefetch),
+                    object : VKApiCallback<MessagesGetByIdExtendedResponse> {
+                        override fun success(result: MessagesGetByIdExtendedResponse) {
+                            for (msg in result.items) DTOConverters.HandleMessage(
+                                messagesToPut,
+                                msg,
+                                result.profiles
+                            )
+                            finishProcessingLP(updates, miscUpdates, missingData, messagesToPut)
+                            startPolling()
+                        }
+
+                        override fun fail(error: Exception) {
+                            finishProcessingLP(updates, miscUpdates, true, messagesToPut)
+                            startPolling()
+                        }
+                    })
             } else {
-                processNewDiffParams(updates.ts, updates.pts, messagesStorage.vkLastMaxMsgId)
+                finishProcessingLP(updates, miscUpdates, missingData, messagesToPut)
             }
+        }
+    }
+
+    private fun finishProcessingLP(
+        updates: LPServerResponseWrapper,
+        miscUpdates: ArrayList<TLRPC.Update>,
+        missingData: Boolean,
+        messagesToPut: ArrayList<TLRPC.Message>
+    ) {
+        var diffNeeded = missingData
+        messagesStorage.putMessages(
+            messagesToPut,
+            false,
+            false,
+            false,
+            downloadController.autodownloadMask,
+            false
+        )
+        if (!diffNeeded && miscUpdates.isNotEmpty()) diffNeeded =
+            diffNeeded or !messagesController.processUpdateArray(
+                miscUpdates,
+                null,
+                null,
+                false,
+                connectionsManager.currentTime
+            )
+        if (diffNeeded) {
+            stopPolling()
+            getHistoryDiff(updates.ts, updates.pts) {
+                if (it) {
+                    startPolling()
+                }
+            }
+        } else {
+            processNewDiffParams(updates.ts, updates.pts, messagesStorage.vkLastMaxMsgId)
         }
     }
 

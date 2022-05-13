@@ -31693,6 +31693,9 @@ public class TLRPC {
                 case 0xfb197a65:
                     result = new TL_photo();
                     break;
+                case 0xfb197a66:
+                    result = new TL_VKphoto();
+                    break;
                 case 0x9288dd29:
                     result = new TL_photo_layer82();
                     break;
@@ -32009,6 +32012,82 @@ public class TLRPC {
                 }
             }
             stream.writeInt32(dc_id);
+        }
+    }
+
+
+    public static class TL_VKphoto extends Photo {
+        public static int constructor = 0xfb197a66;
+
+        public long owner_id;
+
+        public void readParams(AbstractSerializedData stream, boolean exception) {
+            flags = stream.readInt32(exception);
+            has_stickers = (flags & 1) != 0;
+            id = stream.readInt64(exception);
+            access_hash = stream.readInt64(exception);
+            file_reference = stream.readByteArray(exception);
+            date = stream.readInt32(exception);
+            int magic = stream.readInt32(exception);
+            if (magic != 0x1cb5c415) {
+                if (exception) {
+                    throw new RuntimeException(String.format("wrong Vector magic, got %x", magic));
+                }
+                return;
+            }
+            int count = stream.readInt32(exception);
+            for (int a = 0; a < count; a++) {
+                PhotoSize object = PhotoSize.TLdeserialize(id, 0, 0, stream, stream.readInt32(exception), exception);
+                if (object == null) {
+                    return;
+                }
+                sizes.add(object);
+            }
+            if ((flags & 2) != 0) {
+                magic = stream.readInt32(exception);
+                if (magic != 0x1cb5c415) {
+                    if (exception) {
+                        throw new RuntimeException(String.format("wrong Vector magic, got %x", magic));
+                    }
+                    return;
+                }
+                count = stream.readInt32(exception);
+                for (int a = 0; a < count; a++) {
+                    VideoSize object = VideoSize.TLdeserialize(id, 0, stream, stream.readInt32(exception), exception);
+                    if (object == null) {
+                        return;
+                    }
+                    video_sizes.add(object);
+                }
+            }
+            dc_id = stream.readInt32(exception);
+            owner_id = stream.readInt64(exception);
+        }
+
+        public void serializeToStream(AbstractSerializedData stream) {
+            stream.writeInt32(constructor);
+            flags = has_stickers ? (flags | 1) : (flags &~ 1);
+            stream.writeInt32(flags);
+            stream.writeInt64(id);
+            stream.writeInt64(access_hash);
+            stream.writeByteArray(file_reference);
+            stream.writeInt32(date);
+            stream.writeInt32(0x1cb5c415);
+            int count = sizes.size();
+            stream.writeInt32(count);
+            for (int a = 0; a < count; a++) {
+                sizes.get(a).serializeToStream(stream);
+            }
+            if ((flags & 2) != 0) {
+                stream.writeInt32(0x1cb5c415);
+                count = video_sizes.size();
+                stream.writeInt32(count);
+                for (int a = 0; a < count; a++) {
+                    video_sizes.get(a).serializeToStream(stream);
+                }
+            }
+            stream.writeInt32(dc_id);
+            stream.writeInt64(owner_id);
         }
     }
 

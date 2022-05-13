@@ -15,7 +15,6 @@ import com.vk.sdk.api.messages.dto.MessagesGraffiti;
 import com.vk.sdk.api.messages.dto.MessagesMessage;
 import com.vk.sdk.api.messages.dto.MessagesMessageAction;
 import com.vk.sdk.api.messages.dto.MessagesMessageAttachment;
-import com.vk.sdk.api.messages.dto.MessagesMessageAttachmentType;
 import com.vk.sdk.api.photos.dto.PhotosPhoto;
 import com.vk.sdk.api.photos.dto.PhotosPhotoSizes;
 import com.vk.sdk.api.users.dto.UsersUserFull;
@@ -28,6 +27,7 @@ import org.telegram.tgnet.TLRPC;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 public class DTOConverters {
     private static TLRPC.Message VKMessageConverter(MessagesMessage message) {
@@ -61,7 +61,7 @@ public class DTOConverters {
                 PhotosPhoto photo = attachment.getPhoto();
                 TLRPC.MessageMedia media = makeVk(new TLRPC.TL_messageMediaPhoto());
                 media.flags = 1;
-                media.photo = makeVk(new TLRPC.TL_photo());
+                media.photo = makeVk(new TLRPC.TL_VKphoto());
                 media.photo.id = photo.getId();
                 media.photo.date = photo.getDate();
                 media.photo.user_id = photo.getOwnerId().getValue();
@@ -69,11 +69,7 @@ public class DTOConverters {
                 media.photo.file_reference = new byte[0];
                 media.photo.sizes = new ArrayList<>();
                 for (PhotosPhotoSizes size : photo.getSizes()) {
-                    TLRPC.TL_VKphotoSize photoSize = new TLRPC.TL_VKphotoSize();
-                    photoSize.w = size.getWidth();
-                    photoSize.h = size.getHeight();
-                    photoSize.url = size.getUrl();
-                    makePhotoSize(photoSize);
+                    TLRPC.TL_VKphotoSize photoSize = makePhotoSize(size.getWidth(), size.getHeight(), size.getUrl());
                     media.photo.sizes.add(photoSize);
                 }
                 resMsg.flags = resMsg.flags | TLRPC.MESSAGE_FLAG_HAS_MEDIA;
@@ -87,11 +83,7 @@ public class DTOConverters {
                 media.document = new TLRPC.TL_document();
                 media.document.dc_id = -1;
                 media.document.flags = 1;
-                TLRPC.TL_VKphotoSize photoSize = new TLRPC.TL_VKphotoSize();
-                photoSize.w = graffiti.getWidth();
-                photoSize.h = graffiti.getHeight();
-                photoSize.url = graffiti.getUrl();
-                makePhotoSize(photoSize);
+                TLRPC.TL_VKphotoSize photoSize = makePhotoSize(graffiti.getWidth(), graffiti.getHeight(), graffiti.getUrl());
                 media.document.id = graffiti.getId();
                 media.document.thumbs.add(photoSize);
                 media.document.file_reference = new byte[0];
@@ -120,25 +112,30 @@ public class DTOConverters {
         return resMsg;
     }
 
-    private static void makePhotoSize(TLRPC.TL_VKphotoSize photoSize) {
-        if (photoSize.w <= 100 && photoSize.h <= 100) {
+    public static TLRPC.TL_VKphotoSize makePhotoSize(int w, int h, String url) {
+        TLRPC.TL_VKphotoSize photoSize = new TLRPC.TL_VKphotoSize();
+        photoSize.w = w;
+        photoSize.h = h;
+        photoSize.url = url;
+        if (w <= 100 && h <= 100) {
             photoSize.type = "s";
-        } else if (photoSize.w <= 320 && photoSize.h <= 320) {
+        } else if (w <= 320 && h <= 320) {
             photoSize.type = "m";
-        } else if (photoSize.w <= 800 && photoSize.h <= 800) {
+        } else if (w <= 800 && h <= 800) {
             photoSize.type = "x";
-        } else if (photoSize.w <= 1280 && photoSize.h <= 1280) {
+        } else if (w <= 1280 && h <= 1280) {
             photoSize.type = "y";
         } else {
             photoSize.type = "w";
         }
         TLRPC.TL_VKfileLocation location = new TLRPC.TL_VKfileLocation();
         location.url = photoSize.url;
-        location.volume_id = Utils.hash(location.url);
+        location.volume_id = location.url != null ? Utils.hash(location.url) : new Random().nextLong();
         location.dc_id = -1;
         location.local_id = SharedConfig.getLastLocalId();
         location.file_reference = new byte[0];
         photoSize.location = location;
+        return photoSize;
     }
 
     private static TLRPC.MessageAction VKActionConverter(MessagesMessageAction action) {
@@ -245,7 +242,7 @@ public class DTOConverters {
             retChat.id = ret_dialog.id;
             ret_dialog.id = -ret_dialog.id;
             retChat.default_banned_rights = new TLRPC.TL_chatBannedRights();
-            if (chatSettings.getPhoto() != null){
+            if (chatSettings.getPhoto() != null) {
                 retChat.flags = retChat.flags | 262144;
                 retChat.photo = new TLRPC.TL_chatPhoto_layer115();
                 retChat.photo.dc_id = -1;
